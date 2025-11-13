@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portal del Empleado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        background-color: #f3f4f6;
+      }
+      @keyframes pulse-strong {
+        0%, 100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+        }
+        50% {
+          transform: scale(1.02);
+          box-shadow: 0 0 0 12px rgba(99, 102, 241, 0);
+        }
+      }
+      .animate-pulse-strong {
+        animation: pulse-strong 1.5s 2;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
