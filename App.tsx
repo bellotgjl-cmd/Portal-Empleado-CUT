@@ -1,67 +1,27 @@
 
-import React, { useState, useEffect } from 'react';
+
+import * as React from 'react';
 import VacationSwapApp from './components/VacationSwapApp';
 import LoginScreen from './components/LoginScreen';
 import RegistrationScreen from './components/RegistrationScreen';
 import AdminDashboard from './components/AdminDashboard';
+import type { SwapRequest, RegisteredUser } from './types';
+import { allRequestsEverForDemo } from './constants';
 import AppSelector from './components/AppSelector';
 import RestSwapApp from './components/RestSwapApp';
 import TablonAnunciosApp from './components/TablonAnunciosApp';
-import type { SwapRequest } from './types';
-import { allRequestsEverForDemo } from './constants';
-
-export type RegisteredUser = Omit<SwapRequest, 'id' | 'has' | 'wants'>;
-
-const UserMenu: React.FC<{ user: RegisteredUser | null; isAdmin: boolean; onLogout: () => void; isSimulating: boolean; }> = ({ user, isAdmin, onLogout, isSimulating }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const name = isAdmin ? 'Administrador' : user?.employeeName || 'Usuario';
-
-    let logoutText = isAdmin ? 'Salir del Panel' : 'Cambiar de Usuario';
-    if (isSimulating) {
-        logoutText = 'Volver al Panel de Admin';
-    }
-
-    return (
-        <div className="relative">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors"
-            >
-                <span className="font-semibold hidden sm:inline">Hola, {name.split(' ')[0]}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 bg-gray-200 rounded-full p-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5">
-                    <button
-                        onClick={onLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                    >
-                         {isSimulating ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                         )}
-                        {logoutText}
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
+import UserMenu from './components/UserMenu';
 
 
 const App: React.FC = () => {
-  const [registeredUser, setRegisteredUser] = useState<RegisteredUser | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [simulatingFromAdmin, setSimulatingFromAdmin] = useState(false);
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
-  const [selectedApp, setSelectedApp] = useState<string | null>(null);
-  const [allUsers, setAllUsers] = useState<SwapRequest[]>([]);
+  const [registeredUser, setRegisteredUser] = React.useState<RegisteredUser | null>(null);
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [simulatingFromAdmin, setSimulatingFromAdmin] = React.useState(false);
+  const [authView, setAuthView] = React.useState<'login' | 'register'>('login');
+  const [allUsers, setAllUsers] = React.useState<SwapRequest[]>([]);
+  const [selectedApp, setSelectedApp] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     try {
       const storedUser = localStorage.getItem('employeePortalUser');
       if (storedUser === 'admin') {
@@ -85,6 +45,11 @@ const App: React.FC = () => {
       setAllUsers(allRequestsEverForDemo);
     }
   }, []);
+  
+  const handleUpdateUsers = (updatedUsers: SwapRequest[]) => {
+      setAllUsers(updatedUsers);
+      localStorage.setItem('employeePortalAllUsers', JSON.stringify(updatedUsers));
+  };
 
   const handleLogin = (userData: RegisteredUser | 'admin') => {
     if (userData === 'admin') {
@@ -96,6 +61,7 @@ const App: React.FC = () => {
         setRegisteredUser(userData);
         setIsAdmin(false);
     }
+    setSelectedApp(null);
   };
 
   const handleRegister = (userData: RegisteredUser) => {
@@ -104,11 +70,11 @@ const App: React.FC = () => {
         id: userData.employeeId,
         has: [],
         wants: [],
+        status: 'active',
     };
     
     const updatedAllUsers = [...allUsers, newUserAsSwapRequest];
-    setAllUsers(updatedAllUsers);
-    localStorage.setItem('employeePortalAllUsers', JSON.stringify(updatedAllUsers));
+    handleUpdateUsers(updatedAllUsers);
 
     // For this demo, registering just logs the user in directly.
     handleLogin(userData);
@@ -132,9 +98,16 @@ const App: React.FC = () => {
     const isAdminInitiated = isAdmin;
     setRegisteredUser(userToSimulate);
     setIsAdmin(false);
-    // If the simulation was started by an admin, set the flag. Otherwise, it's a user-to-user simulation.
     setSimulatingFromAdmin(isAdminInitiated);
-    setSelectedApp('vacations');
+    setSelectedApp(null);
+  };
+
+  const handleSelectApp = (app: string) => {
+    setSelectedApp(app);
+  };
+
+  const handleBackToMenu = () => {
+    setSelectedApp(null);
   };
 
   const renderContent = () => {
@@ -146,66 +119,67 @@ const App: React.FC = () => {
     }
 
     if (isAdmin && !simulatingFromAdmin) {
-        return <AdminDashboard allUsers={allUsers} onSimulateUser={handleSimulateUser} />;
+        return <AdminDashboard allUsers={allUsers} onSimulateUser={handleSimulateUser} onUpdateUsers={handleUpdateUsers} />;
     }
 
     if (!registeredUser) return null;
     
     if (!selectedApp) {
-        return <AppSelector onSelectApp={setSelectedApp} />;
+      return <AppSelector onSelectApp={handleSelectApp} />;
     }
 
     switch (selectedApp) {
-        case 'vacations':
-            return <VacationSwapApp 
-                        registeredUser={registeredUser} 
-                        onSimulateUser={handleSimulateUser}
-                    />;
-        case 'rest':
-            return <RestSwapApp registeredUser={registeredUser} />;
-        case 'board':
-            return <TablonAnunciosApp registeredUser={registeredUser} />;
-        case 'shift':
-             return (
-                <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-lg mx-auto">
-                    <h2 className="text-2xl font-bold text-gray-700">Próximamente</h2>
-                    <p className="text-gray-500 mt-2">La funcionalidad de 'Cambio de Servicio' está en construcción.</p>
-                    <button 
-                        onClick={() => setSelectedApp(null)}
-                        className="mt-6 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-                    >
-                        Volver al Menú
-                    </button>
-                </div>
-            );
-        default:
-            return <AppSelector onSelectApp={setSelectedApp} />;
+      case 'vacations':
+        return <VacationSwapApp registeredUser={registeredUser} onSimulateUser={handleSimulateUser} allUsers={allUsers} />;
+      case 'rest':
+        return <RestSwapApp registeredUser={registeredUser} />;
+      case 'board':
+        return <TablonAnunciosApp registeredUser={registeredUser} allUsers={allUsers} />;
+      case 'shift':
+      default:
+        return (
+          <div className="text-center py-10 px-6 bg-white rounded-xl shadow-lg">
+            <h3 className="text-lg font-medium text-gray-500">Aplicación no disponible.</h3>
+            <button onClick={handleBackToMenu} className="mt-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700">
+              Volver al menú
+            </button>
+          </div>
+        );
     }
   }
 
   const showUserMenu = registeredUser || isAdmin;
+
+  let activeUserName: string | null = null;
+  if (isAdmin && !simulatingFromAdmin) {
+    activeUserName = 'Administrador';
+  } else if (registeredUser) {
+    activeUserName = registeredUser.employeeName;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
        <header className="bg-white shadow-sm py-4 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex-1">
-              {selectedApp && !isAdmin && !simulatingFromAdmin && (
-                <button
-                  onClick={() => setSelectedApp(null)}
-                  className="flex items-center text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
-                  </svg>
-                  Volver al Menú
-                </button>
+              {selectedApp && registeredUser && !simulatingFromAdmin && (
+                  <button onClick={handleBackToMenu} className="flex items-center text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                      </svg>
+                      Volver al Menú
+                  </button>
               )}
             </div>
-            <div className="flex-1">
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 text-center">
+            <div className="flex-1 text-center">
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900">
                     Portal del Empleado
                 </h1>
+                {activeUserName && (
+                  <p className="text-sm font-medium text-indigo-600 mt-1" aria-live="polite">
+                      Usuario en línea: {activeUserName}
+                  </p>
+                )}
             </div>
             <div className="flex-1 flex justify-end">
                 {showUserMenu && <UserMenu user={registeredUser} isAdmin={isAdmin} onLogout={handleLogout} isSimulating={simulatingFromAdmin} />}

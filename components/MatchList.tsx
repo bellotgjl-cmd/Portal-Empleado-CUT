@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+
+import * as React from 'react';
 import type { Match, Transaction, TradeProposal } from '../types';
 import { getFortnightLabel } from '../constants';
 import CountdownTimer from './CountdownTimer';
@@ -93,7 +94,7 @@ const MatchCard: React.FC<{
     onExpire: (transactionId: string) => void;
 }> = ({ match, isLocked, isThisTheActiveMatch, activeTransaction, currentUserRequestId, onSelectMatch, onAccept, onReject, onExpire }) => {
     
-    const [selectedProposal, setSelectedProposal] = useState<TradeProposal | null>(null);
+    const [selectedProposal, setSelectedProposal] = React.useState<TradeProposal | null>(null);
 
     const cardBaseClasses = "p-5 rounded-xl shadow-lg transition-all duration-300";
     let cardStateClasses = 'bg-white border border-gray-200';

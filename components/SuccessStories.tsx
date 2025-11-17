@@ -1,7 +1,12 @@
 
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+
+
+
+
+import * as React from 'react';
 import type { Transaction, SwapRequest } from '../types';
+import type { RegisteredUser } from '../types';
 import { getFortnightLabel } from '../constants';
 import FormalizationModal from './FormalizationModal';
 
@@ -10,6 +15,7 @@ interface SuccessStoriesProps {
   allRequests: SwapRequest[];
   currentUserRequestId: string | null;
   highlightedTransactionId?: string | null;
+  onSimulateUser: (user: RegisteredUser) => void;
 }
 
 const FortnightPill: React.FC<{ id: string, color: string }> = ({ id, color }) => (
@@ -18,13 +24,13 @@ const FortnightPill: React.FC<{ id: string, color: string }> = ({ id, color }) =
     </span>
 );
 
-const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allRequests, currentUserRequestId, highlightedTransactionId }) => {
-  const [formalizingTransaction, setFormalizingTransaction] = useState<Transaction | null>(null);
-  const [initiatorForModal, setInitiatorForModal] = useState<SwapRequest | null>(null);
-  const [receiverForModal, setReceiverForModal] = useState<SwapRequest | null>(null);
-  const highlightedRef = useRef<HTMLDivElement>(null);
+const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allRequests, currentUserRequestId, highlightedTransactionId, onSimulateUser }) => {
+  const [formalizingTransaction, setFormalizingTransaction] = React.useState<Transaction | null>(null);
+  const [initiatorForModal, setInitiatorForModal] = React.useState<SwapRequest | null>(null);
+  const [receiverForModal, setReceiverForModal] = React.useState<SwapRequest | null>(null);
+  const highlightedRef = React.useRef<HTMLDivElement>(null);
 
-  const { userSuccesses, otherSuccesses } = useMemo(() => {
+  const { userSuccesses, otherSuccesses } = React.useMemo(() => {
     const confirmed = transactions.filter(t => t.status === 'confirmed');
 
     let allUserSuccesses = confirmed.filter(t =>
@@ -48,7 +54,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
     return { userSuccesses: allUserSuccesses, otherSuccesses: allOtherSuccesses };
   }, [transactions, currentUserRequestId, highlightedTransactionId]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (highlightedTransactionId && highlightedRef.current) {
       setTimeout(() => {
         highlightedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -108,12 +114,19 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
           mailtoLink = `mailto:${otherPerson.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           whatsappLink = `https://wa.me/${otherPerson.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`;
       }
+      
+      const handleSimulate = (userToSimulate: SwapRequest | null) => {
+        if (!userToSimulate) return;
+        const { id, has, wants, status, blockReason, ...registeredUserData } = userToSimulate;
+        onSimulateUser(registeredUserData);
+      };
+
 
       return (
             <div 
               key={t.id}
               ref={isHighlighted ? highlightedRef : null}
-              className={`bg-white p-6 rounded-xl shadow-lg border transition-all duration-500 ${isHighlighted ? 'border-indigo-500 ring-4 ring-indigo-500/20' : 'border-green-200'}`}>
+              className={`bg-white p-6 rounded-xl shadow-lg border transition-all duration-500 ${isHighlighted ? 'border-indigo-500 ring-4 ring-indigo-500/20 animate-pulse-strong' : 'border-green-200'}`}>
               <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="flex items-center space-x-4">
                       <span className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
@@ -137,8 +150,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
                           </a>
                           <a href={whatsappLink} target="_blank" rel="noopener noreferrer" title={`Contactar por WhatsApp a ${otherPerson.employeeName}`} className="text-gray-400 hover:text-green-500 transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24" fill="currentColor">
-                                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.35 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.36 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 9.28 20.94 6.81 19.1 4.97C17.26 3.13 14.79 2.12 12.16 2.12L12.04 2ZM12.04 3.67C14.25 3.67 16.31 4.5 17.87 6.05C19.42 7.61 20.28 9.67 20.28 11.88C20.28 16.45 16.63 20.1 12.04 20.1C10.5 20.1 9 19.64 7.74 18.86L7.33 18.61L4.43 19.43L5.27 16.61L5.02 16.19C4.16 14.86 3.78 13.33 3.78 11.88C3.78 7.31 7.43 3.67 12.04 3.67ZM9.11 7.23C8.89 7.23 8.7 7.22 8.51 7.22C8.2 7.22 7.88 7.31 7.69 7.62C7.5 7.93 6.87 8.54 6.87 9.71C6.87 10.88 7.71 11.99 7.85 12.17C8 12.35 9.08 14.03 10.8 14.8C12.21 15.44 12.56 15.58 13.04 15.77C13.78 16.06 14.36 16.02 14.78 15.65C15.28 15.21 15.71 14.54 15.89 14.23C16.08 13.92 16.17 13.74 16.12 13.56C16.08 13.38 15.89 13.29 15.65 13.17C15.42 13.06 14.25 12.49 14.02 12.4C13.78 12.31 13.6 12.26 13.41 12.57C13.22 12.88 12.72 13.45 12.58 13.61C12.43 13.77 12.29 13.79 12.04 13.68C11.8 13.58 11.07 13.34 10.16 12.54C9.44 11.91 8.94 11.13 8.8 10.92C8.65 10.71 8.78 10.58 8.91 10.45C9.02 10.33 9.16 10.15 9.3 10C9.44 9.85 9.49 9.73 9.58 9.54C9.67 9.35 9.62 9.18 9.55 9.07C9.49 8.96 9.11 8.05 8.94 7.62C8.77 7.18 8.6 7.23 8.44 7.23H8.43L8.24 7.23H9.11Z"></path>
-                              </svg>
+                                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.35 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.36 21.82 12.04 21.82C17.5 21.82 21.95 17.37 21.95 11.91C21.95 9.28 20.94 6.81 19.1 4.97C17.26 3.13 14.79 2.12 12.16 2.12L12.04 2ZM12.04 3.67C14.25 3.67 16.31 4.5 17.87 6.05C19.42 7.61 20.28 9.67 20.28 11.88C20.28 16.45 16.63 20.1 12.04 20.1C10.5 20.1 9 19.64 7.74 18.86L7.33 18.61L4.43 19.43L5.27 16.61L5.02 16.19C4.16 14.86 3.78 13.33 3.78 11.88C3.78 7.31 7.43 3.67 12.04 3.67ZM9.11 7.23C8.89 7.23 8.7 7.22 8.51 7.22C8.2 7.22 7.88 7.31 7.69 7.62C7.5 7.93 6.87 8.54 6.87 9.71C6.87 10.88 7.71 11.99 7.85 12.17C8 12.35 9.08 14.03 10.8 14.8C12.21 15.44 12.56 15.58 13.04 15.77C13.78 16.06 14.36 16.02 14.78 15.65C15.28 15.21 15.71 14.54 15.89 14.23C16.08 13.92 16.17 13.74 16.12 13.56C16.08 13.38 15.89 13.29 15.65 13.17C15.42 13.06 14.25 12.49 14.02 12.4C13.78 12.31 13.6 12.26 13.41 12.57C13.22 12.88 12.72 13.45 12.58 13.61C12.43 13.77 12.29 13.79 12.04 13.68C11.8 13.58 11.07 13.34 10.16 12.54C9.44 11.91 8.94 11.13 8.8 10.92C8.65 10.71 8.78 10.58 8.91 10.45C9.02 10.33 9.16 10.15 9.3 10C9.44 9.85 9.49 9.73 9.58 9.54C9.67 9.35 9.62 9.18 9.55 9.07C9.49 8.96 9.11 8.05 8.94 7.62C8.77 7.18 8.6 7.23 8.44 7.23H8.43L8.24 7.23H9.11Z" /></svg>
                           </a>
                       </div>
                   )}
@@ -162,20 +174,43 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
                       </div>
                   </div>
               </div>
-
-              {isCurrentUserInvolved && (
-                <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                  <button
-                    onClick={() => handleFormalizeClick(t, initiator, receiver)}
-                    className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block -mt-1 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Formalizar Cambio Oficial
-                  </button>
+              
+                {isCurrentUserInvolved && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                    <button
+                        onClick={() => handleFormalizeClick(t, initiator, receiver)}
+                        className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block -mt-1 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Formalizar Cambio Oficial
+                    </button>
+                    </div>
+                )}
+                
+                {/* --- DEMO/TESTING SECTION --- */}
+                <div className="mt-6 pt-4 border-t-2 border-dashed border-purple-300 bg-purple-50 p-4 rounded-lg">
+                    <h5 className="text-center font-bold text-sm text-purple-800 mb-3">Control de Pruebas (Demo)</h5>
+                    <div className="flex justify-center items-center gap-4">
+                        <button
+                            onClick={() => handleSimulate(initiator)}
+                            className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-xs flex items-center justify-center shadow-md transition-all transform hover:scale-105"
+                            title={`Simular vista de ${initiator.employeeName}`}
+                        >
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            Simular como {initiator.employeeName.split(' ')[0]}
+                        </button>
+                        <button
+                            onClick={() => handleSimulate(receiver)}
+                            className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-xs flex items-center justify-center shadow-md transition-all transform hover:scale-105"
+                            title={`Simular vista de ${receiver.employeeName}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                           Simular como {receiver.employeeName.split(' ')[0]}
+                        </button>
+                    </div>
                 </div>
-              )}
 
             </div>
       );

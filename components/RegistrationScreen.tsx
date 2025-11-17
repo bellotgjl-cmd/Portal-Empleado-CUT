@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import type { RegisteredUser } from '../App';
+import type { RegisteredUser } from '../types';
 import type { SwapRequest } from '../types';
+import { IS_DEVELOPMENT_MODE } from '../constants';
 
 interface RegistrationScreenProps {
   allUsers: SwapRequest[];
@@ -33,10 +33,38 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ allUsers, onReg
       setError('Todos los campos son obligatorios.');
       return;
     }
-     if (allUsers.some(user => user.employeeId === employeeId.trim())) {
-        setError('Este número de empleado ya está registrado. Por favor, inicia sesión.');
-        return;
+
+    // --- Validation Checks ---
+    // These checks are skipped if IS_DEVELOPMENT_MODE is true.
+    if (!IS_DEVELOPMENT_MODE) {
+        const trimmedEmail = email.trim();
+        const trimmedWhatsapp = whatsapp.trim();
+
+        const isBlocked = allUsers.some(user => 
+            user.status === 'blocked' && (user.email === trimmedEmail || user.whatsapp === trimmedWhatsapp)
+        );
+
+        if (isBlocked) {
+            setError('El email o WhatsApp proporcionado está asociado a una cuenta bloqueada. No puedes registrarte. Contacta con el administrador.');
+            return;
+        }
+        
+        if (allUsers.some(user => user.employeeId === employeeId.trim())) {
+            setError('Este número de empleado ya está registrado. Por favor, inicia sesión.');
+            return;
+        }
+
+        if (allUsers.some(user => user.email === trimmedEmail)) {
+            setError('Este email ya está registrado. Por favor, inicia sesión o usa otro email.');
+            return;
+        }
+
+        if (allUsers.some(user => user.whatsapp === trimmedWhatsapp)) {
+            setError('Este número de WhatsApp ya está registrado. Por favor, inicia sesión o usa otro número.');
+            return;
+        }
     }
+    
     if (!/\S+@\S+\.\S+/.test(email)) {
         setError('Por favor, introduce un email válido.');
         return;
@@ -45,7 +73,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ allUsers, onReg
         setError('Debes aceptar las condiciones de uso para registrarte.');
         return;
     }
-    onRegister(formData);
+    onRegister({ ...formData, email: email.trim(), whatsapp: whatsapp.trim() });
   };
 
   return (

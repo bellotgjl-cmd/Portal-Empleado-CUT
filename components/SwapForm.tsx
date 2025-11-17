@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import * as React from 'react';
 import FortnightSelector from './FortnightSelector';
 import type { FortnightId, SwapRequest } from '../types';
 
@@ -15,16 +16,16 @@ const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, c
 );
 
 const SwapForm: React.FC<SwapFormProps> = ({ onSubmit, initialData }) => {
-  const [employeeName, setEmployeeName] = useState('');
-  const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [has, setHas] = useState<FortnightId[]>([]);
-  const [wants, setWants] = useState<FortnightId[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [employeeName, setEmployeeName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [whatsapp, setWhatsapp] = React.useState('');
+  const [has, setHas] = React.useState<FortnightId[]>([]);
+  const [wants, setWants] = React.useState<FortnightId[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
   const isContactInfoLocked = !!initialData?.employeeName;
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (initialData) {
       setEmployeeName(initialData.employeeName);
       setEmail(initialData.email);

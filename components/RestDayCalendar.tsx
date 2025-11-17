@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import * as React from 'react';
 
 interface RestDayCalendarProps {
   selectedDays: string[];
@@ -8,7 +9,7 @@ interface RestDayCalendarProps {
 const WEEK_DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
 
 const RestDayCalendar: React.FC<RestDayCalendarProps> = ({ selectedDays, onDayToggle }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = React.useState(new Date());
 
   const changeMonth = (offset: number) => {
     setCurrentDate(prev => {

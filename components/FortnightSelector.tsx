@@ -1,4 +1,5 @@
-import React from 'react';
+
+import * as React from 'react';
 import { FORTNIGHTS, MONTHS, getFullMonthId } from '../constants';
 import type { FortnightId } from '../types';
 

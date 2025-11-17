@@ -1,13 +1,12 @@
-
-import React, { useState, useEffect } from 'react';
-import type { RegisteredUser } from '../App';
+import * as React from 'react';
+import type { RegisteredUser } from '../types';
 import type { RestSwapRequest, Debt } from '../types';
 import RestDayCalendar from './RestDayCalendar';
 import RequestBoard from './RequestBoard';
 import DebtManager from './DebtManager';
 import SwapProposalModal from './SwapProposalModal';
 import DebtSettlementModal from './DebtSettlementModal';
-import RestAvailabilityCalendar from './VacationCalendarView'; // Renamed internally, but file path is the same
+import VacationCalendarView from './VacationCalendarView';
 import { initialRestRequests, initialDebts } from '../constants';
 
 interface RestSwapAppProps {
@@ -15,17 +14,17 @@ interface RestSwapAppProps {
 }
 
 const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
-    const [requests, setRequests] = useState<RestSwapRequest[]>(initialRestRequests);
-    const [myOfferedDays, setMyOfferedDays] = useState<string[]>([]);
-    const [myReason, setMyReason] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [view, setView] = useState<'request' | 'board' | 'debts' | 'calendar'>('board');
-    const [boardView, setBoardView] = useState<'active' | 'successful' | 'expired'>('active');
-    const [debts, setDebts] = useState<Debt[]>(initialDebts);
-    const [managingRequest, setManagingRequest] = useState<RestSwapRequest | null>(null);
-    const [settlingDebt, setSettlingDebt] = useState<Debt | null>(null);
+    const [requests, setRequests] = React.useState<RestSwapRequest[]>(initialRestRequests);
+    const [myOfferedDays, setMyOfferedDays] = React.useState<string[]>([]);
+    const [myReason, setMyReason] = React.useState('');
+    const [error, setError] = React.useState<string | null>(null);
+    const [view, setView] = React.useState<'request' | 'board' | 'debts' | 'calendar'>('board');
+    const [boardView, setBoardView] = React.useState<'active' | 'successful' | 'expired'>('active');
+    const [debts, setDebts] = React.useState<Debt[]>(initialDebts);
+    const [managingRequest, setManagingRequest] = React.useState<RestSwapRequest | null>(null);
+    const [settlingDebt, setSettlingDebt] = React.useState<Debt | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -263,7 +262,7 @@ const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
                          <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-teal-500">
                             Calendario de Disponibilidad
                         </h2>
-                        <RestAvailabilityCalendar 
+                        <VacationCalendarView 
                             requests={activeRequests.filter(r => r.employeeId !== registeredUser.employeeId)}
                             onManageSwap={(req) => setManagingRequest(req)}
                         />

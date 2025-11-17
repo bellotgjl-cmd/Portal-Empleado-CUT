@@ -1,6 +1,10 @@
-import React, { useRef, useState } from 'react';
+
+import * as React from 'react';
 import type { Transaction, SwapRequest } from '../types';
 import { getFortnightLabel } from '../constants';
+
+// Declare jspdf as a global variable provided by the script tag in index.html
+declare const jspdf: any;
 
 interface FormalizationModalProps {
   transaction: Transaction;
@@ -10,50 +14,57 @@ interface FormalizationModalProps {
 }
 
 const FormalizationModal: React.FC<FormalizationModalProps> = ({ transaction, initiator, receiver, onClose }) => {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [copyButtonText, setCopyButtonText] = useState('Copiar al Portapapeles');
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [copyButtonText, setCopyButtonText] = React.useState('Copiar Texto');
+  const [pdfButtonText, setPdfButtonText] = React.useState('Generar PDF');
+
 
   const initiatorGives = transaction.initiatorGives.map(getFortnightLabel).join(', ');
   const receiverGives = transaction.receiverGives.map(getFortnightLabel).join(', ');
 
   const formalText = `
-    Asunto: SOLICITUD DE FORMALIZACIÓN DE CAMBIO DE VACACIONES
+Asunto: SOLICITUD DE FORMALIZACIÓN DE CAMBIO DE VACACIONES
 
-    A la atención del Departamento de Planificación,
+A la atención del Departamento de Planificación,
 
-    Por medio de la presente, los abajo firmantes:
+Por medio de la presente, los abajo firmantes:
 
-    - D./Dña. ${initiator.employeeName}, con número de empleado ${initiator.employeeId}.
-    - D./Dña. ${receiver.employeeName}, con número de empleado ${receiver.employeeId}.
+- D./Dña. ${initiator.employeeName}, con número de empleado ${initiator.employeeId}.
+- D./Dña. ${receiver.employeeName}, con número de empleado ${receiver.employeeId}.
 
-    Comunicamos que, habiendo alcanzado un acuerdo mutuo, solicitamos la formalización del siguiente cambio en nuestros periodos vacacionales asignados:
+Comunicamos que, habiendo alcanzado un acuerdo mutuo, solicitamos la formalización del siguiente cambio en nuestros periodos vacacionales asignados:
 
-    Asignación Original:
-    - D./Dña. ${initiator.employeeName} cedía el periodo de: ${initiatorGives}.
-    - D./Dña. ${receiver.employeeName} cedía el periodo de: ${receiverGives}.
+Asignación Original:
+- D./Dña. ${initiator.employeeName} cedía el periodo de: ${initiatorGives}.
+- D./Dña. ${receiver.employeeName} cedía el periodo de: ${receiverGives}.
 
-    Nueva Asignación Acordada:
-    Tras el intercambio, los periodos vacacionales quedarán de la siguiente manera:
-    - D./Dña. ${initiator.employeeName} pasará a disfrutar del periodo de: ${receiverGives}.
-    - D./Dña. ${receiver.employeeName} pasará a disfrutar del periodo de: ${initiatorGives}.
+Nueva Asignación Acordada:
+Tras el intercambio, los periodos vacacionales quedarán de la siguiente manera:
+- D./Dña. ${initiator.employeeName} pasará a disfrutar del periodo de: ${receiverGives}.
+- D./Dña. ${receiver.employeeName} pasará a disfrutar del periodo de: ${initiatorGives}.
 
-    Agradecemos de antemano su colaboración para hacer efectivo este cambio en la planificación.
+Agradecemos de antemano su colaboración para hacer efectivo este cambio en la planificación.
 
-    Atentamente,
+Atentamente,
 
-    Fecha: ${new Date().toLocaleDateString('es-ES')}
+Fecha: ${new Date().toLocaleDateString('es-ES')}
 
-    Fdo: ${initiator.employeeName}
 
-    Fdo: ${receiver.employeeName}
+
+\n
+Fdo: ${initiator.employeeName}                        Fdo: ${receiver.employeeName}
   `;
+  
+    const mailBody = `Hola,\n\nAdjunto el PDF con la solicitud de cambio de vacaciones para formalizarlo.\n\nUn saludo.`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent("Formalización de Cambio de Vacaciones")}&body=${encodeURIComponent(mailBody)}`;
+
 
   const handleCopy = () => {
     if (contentRef.current) {
       navigator.clipboard.writeText(contentRef.current.innerText)
         .then(() => {
           setCopyButtonText('¡Copiado!');
-          setTimeout(() => setCopyButtonText('Copiar al Portapapeles'), 2000);
+          setTimeout(() => setCopyButtonText('Copiar Texto'), 2000);
         })
         .catch(err => {
           console.error('Error al copiar: ', err);
@@ -61,6 +72,25 @@ const FormalizationModal: React.FC<FormalizationModalProps> = ({ transaction, in
         });
     }
   };
+  
+  const handleGeneratePdf = () => {
+      // Use the jspdf global object, accessing the jsPDF class constructor from it.
+      const doc = new jspdf.jsPDF();
+      
+      // Set font and size for better readability
+      doc.setFont('Helvetica');
+      doc.setFontSize(12);
+
+      // Split text into lines and add to PDF
+      const textLines = doc.splitTextToSize(formalText.trim(), 180); // 180 is the max width in mm
+      doc.text(textLines, 15, 20); // 15mm from left, 20mm from top
+      
+      doc.save(`Solicitud_Cambio_Vacaciones_${initiator.employeeId}_${receiver.employeeId}.pdf`);
+
+      setPdfButtonText('¡PDF Generado!');
+      setTimeout(() => setPdfButtonText('Generar PDF'), 2000);
+  };
+
 
   return (
     <>
@@ -75,7 +105,7 @@ const FormalizationModal: React.FC<FormalizationModalProps> = ({ transaction, in
                 <div className="flex justify-between items-center mb-4 border-b pb-3">
                     <h3 className="text-2xl font-bold text-gray-800">Formulario de Cambio Oficial</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
@@ -83,16 +113,30 @@ const FormalizationModal: React.FC<FormalizationModalProps> = ({ transaction, in
 
                 <div className="overflow-y-auto flex-grow pr-4 -mr-4">
                     <div ref={contentRef} className="bg-gray-50 p-6 rounded-lg border prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap font-serif">
-                        {formalText.trim()}
+                        {formalText.trim().replace(/\\n/g, '\n')}
                     </div>
                 </div>
                 
                 <div className="mt-6 pt-6 border-t flex flex-col sm:flex-row justify-end gap-3">
                     <button 
                         onClick={handleCopy}
-                        className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors w-full sm:w-auto"
+                        className="bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-gray-600 transition-colors w-full sm:w-auto"
                     >
                         {copyButtonText}
+                    </button>
+                    <a 
+                        href={mailtoLink}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-green-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-green-700 transition-colors w-full sm:w-auto text-center"
+                    >
+                        Enviar por Email
+                    </a>
+                     <button 
+                        onClick={handleGeneratePdf}
+                        className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors w-full sm:w-auto"
+                    >
+                        {pdfButtonText}
                     </button>
                 </div>
             </div>

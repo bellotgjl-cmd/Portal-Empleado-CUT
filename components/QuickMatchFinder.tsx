@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import * as React from 'react';
 import type { FortnightId, SwapRequest } from '../types';
 import FortnightSelector from './FortnightSelector';
 import SwapList from './SwapList';
@@ -17,12 +18,12 @@ const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, c
 
 
 const QuickMatchFinder: React.FC<QuickMatchFinderProps> = ({ allRequests, currentUserType }) => {
-  const [have, setHave] = useState<FortnightId[]>([]);
-  const [want, setWant] = useState<FortnightId[]>([]);
-  const [results, setResults] = useState<SwapRequest[] | null>(null);
-  const [searched, setSearched] = useState(false);
+  const [have, setHave] = React.useState<FortnightId[]>([]);
+  const [want, setWant] = React.useState<FortnightId[]>([]);
+  const [results, setResults] = React.useState<SwapRequest[] | null>(null);
+  const [searched, setSearched] = React.useState(false);
 
-  const relevantRequests = useMemo(() => {
+  const relevantRequests = React.useMemo(() => {
     return allRequests.filter(req => req.employeeType === currentUserType);
   }, [allRequests, currentUserType]);
 

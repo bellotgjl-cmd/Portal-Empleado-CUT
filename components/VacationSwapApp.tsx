@@ -1,14 +1,14 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+
+import * as React from 'react';
 import SwapForm from './SwapForm';
 import SwapList from './SwapList';
 import MatchList from './MatchList';
 import QuickMatchFinder from './QuickMatchFinder';
 import TransactionHistory from './TransactionHistory';
 import SuccessStories from './SuccessStories';
-import type { SwapRequest, Match, Transaction, TransactionStatus, TradeProposal } from '../types';
-import type { RegisteredUser } from '../App';
-import { initialRequests, initialTransactions, allRequestsEverForDemo } from '../constants';
+import type { SwapRequest, Match, Transaction, TransactionStatus, TradeProposal, RegisteredUser } from '../types';
+import { initialRequests, initialTransactions } from '../constants';
 
 // --- LocalStorage Keys ---
 const LS_KEYS = {
@@ -48,10 +48,11 @@ function findMatches(currentUser: SwapRequest, allRequests: SwapRequest[]): Matc
 interface VacationSwapAppProps {
     registeredUser: RegisteredUser;
     onSimulateUser: (user: RegisteredUser) => void;
+    allUsers: SwapRequest[];
 }
 
-const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSimulateUser }) => {
-  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>(() => {
+const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSimulateUser, allUsers }) => {
+  const [swapRequests, setSwapRequests] = React.useState<SwapRequest[]>(() => {
     try {
       const stored = localStorage.getItem(LS_KEYS.REQUESTS);
       return stored ? JSON.parse(stored) : initialRequests;
@@ -60,10 +61,9 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
     }
   });
   
-  const [allRequestsEver, setAllRequestsEver] = useState<SwapRequest[]>(allRequestsEverForDemo);
-  const [currentUserRequest, setCurrentUserRequest] = useState<SwapRequest | null>(null);
+  const [currentUserRequest, setCurrentUserRequest] = React.useState<SwapRequest | null>(null);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+  const [transactions, setTransactions] = React.useState<Transaction[]>(() => {
     try {
       const stored = localStorage.getItem(LS_KEYS.TRANSACTIONS);
       return stored ? JSON.parse(stored) : initialTransactions;
@@ -72,25 +72,26 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
     }
   });
 
-  const [lastSeenMatchCount, setLastSeenMatchCount] = useState(0);
-  const [newMatchesCount, setNewMatchesCount] = useState(0);
-  const [lastTransactionStatus, setLastTransactionStatus] = useState<{id: string, status: TransactionStatus} | null>(null);
-  const [loginNotification, setLoginNotification] = useState<string | null>(null);
-  const [view, setView] = useState<'dashboard' | 'explore' | 'success'>('dashboard');
-  const [lastActiveUserId, setLastActiveUserId] = useState<string | null>(null);
-  const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
+  const [lastSeenMatchCount, setLastSeenMatchCount] = React.useState(0);
+  const [newMatchesCount, setNewMatchesCount] = React.useState(0);
+  const [lastTransactionStatus, setLastTransactionStatus] = React.useState<{id: string, status: TransactionStatus} | null>(null);
+  const [loginNotification, setLoginNotification] = React.useState<string | null>(null);
+  const [view, setView] = React.useState<'dashboard' | 'explore' | 'success'>('dashboard');
+  const [lastActiveUserId, setLastActiveUserId] = React.useState<string | null>(null);
+  const [highlightedTransactionId, setHighlightedTransactionId] = React.useState<string | null>(null);
+  const [scrollToSection, setScrollToSection] = React.useState<string | null>(null);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     localStorage.setItem(LS_KEYS.REQUESTS, JSON.stringify(swapRequests));
   }, [swapRequests]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     localStorage.setItem(LS_KEYS.TRANSACTIONS, JSON.stringify(transactions));
   }, [transactions]);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Check if the registered user already has a request in the list and set it as active.
     const existingRequest = swapRequests.find(req => req.employeeId === registeredUser.employeeId);
     if (existingRequest) {
@@ -106,14 +107,30 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
 
   }, [registeredUser, swapRequests]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (view !== 'success') {
       setHighlightedTransactionId(null);
     }
   }, [view]);
 
+  // Effect to scroll to a specific section when requested
+  React.useEffect(() => {
+    if (scrollToSection) {
+        setTimeout(() => { // Timeout to allow DOM to update
+            const element = document.getElementById(scrollToSection);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('animate-pulse-strong');
+                setTimeout(() => element.classList.remove('animate-pulse-strong'), 3000);
+            }
+            setScrollToSection(null); // Reset after scroll
+        }, 100);
+    }
+  }, [scrollToSection]);
+
+
   // Effect to check for incoming proposals on login/user change
-  useEffect(() => {
+  React.useEffect(() => {
     if (currentUserRequest) {
       // 1. Check for incoming proposal to show immediately
       const incomingProposal = transactions.find(t =>
@@ -121,19 +138,10 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
       );
 
       if (incomingProposal) {
-        const initiator = allRequestsEver.find(u => u.id === incomingProposal.initiatorId);
+        const initiator = allUsers.find(u => u.id === incomingProposal.initiatorId);
         setLoginNotification(`¡Atención! ${initiator?.employeeName || 'Un compañero'} te ha enviado una propuesta. Revisa tus coincidencias.`);
         setView('dashboard'); // Force view to dashboard
-
-        // Scroll to the relevant match card after a short delay to ensure rendering
-        setTimeout(() => {
-          const element = document.getElementById(`match-card-${incomingProposal.initiatorId}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.classList.add('animate-pulse-strong');
-            setTimeout(() => element.classList.remove('animate-pulse-strong'), 3000);
-          }
-        }, 200);
+        setScrollToSection(`match-card-${incomingProposal.initiatorId}`);
       } else {
          // 2. Check for notifications from past actions if no proposal is active
         const notificationKey = `${LS_KEYS.NOTIFICATION_PREFIX}${currentUserRequest.id}`;
@@ -150,10 +158,10 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
         }
       }
     }
-  }, [currentUserRequest, transactions, allRequestsEver]);
+  }, [currentUserRequest, transactions, allUsers]);
 
 
-  const activeTransaction = useMemo(() => {
+  const activeTransaction = React.useMemo(() => {
     if (!currentUserRequest) return null;
     return transactions.find(t => 
         (t.initiatorId === currentUserRequest.id || t.receiverId === currentUserRequest.id) && 
@@ -173,9 +181,6 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
       setSwapRequests(prev =>
         prev.map(req => req.id === currentUserRequest.id ? updatedRequest : req)
       );
-      setAllRequestsEver(prev =>
-        prev.map(req => req.id === currentUserRequest.id ? updatedRequest : req)
-      );
       setCurrentUserRequest(updatedRequest);
     } else {
       // Create new request for the registered user
@@ -183,14 +188,24 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
         ...registeredUser,
         ...formData,
         id: registeredUser.employeeId, // Use a stable ID
+        status: 'active',
       };
-      setSwapRequests(prev => [newRequest, ...prev]);
-      setAllRequestsEver(prev => [newRequest, ...prev]);
+      
+      const updatedRequests = [newRequest, ...swapRequests];
+      setSwapRequests(updatedRequests);
       setCurrentUserRequest(newRequest);
       setLastSeenMatchCount(0);
       setNewMatchesCount(0);
       setLastActiveUserId(null);
-      setView('dashboard');
+
+      // --- Smart Redirection Logic ---
+      const newMatches = findMatches(newRequest, updatedRequests);
+      if (newMatches.length > 0) {
+        setView('dashboard');
+        setScrollToSection('matches-section'); // Trigger scroll to matches
+      } else {
+        setView('explore'); // No matches, encourage exploration
+      }
     }
   };
 
@@ -207,7 +222,8 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
           status: 'pending',
       };
       setTransactions(prev => [...prev, newTransaction]);
-      setView('explore');
+      setView('dashboard'); // Stay on dashboard to see the pending transaction
+      setScrollToSection(`match-card-${match.otherPerson.id}`);
   };
 
   const handleTransactionResponse = (transactionId: string, newStatus: Extract<TransactionStatus, 'confirmed' | 'rejected' | 'expired'>) => {
@@ -234,11 +250,11 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
             }
         }
         setHighlightedTransactionId(transactionId);
-        setView('success');
+        setView('success'); // --- REDIRECT TO SUCCESS STORIES ---
       }
   };
   
-  const matches = useMemo(() => {
+  const matches = React.useMemo(() => {
     if (!currentUserRequest) return [];
     const foundMatches = findMatches(currentUserRequest, swapRequests);
     return foundMatches.sort((a, b) => 
@@ -246,7 +262,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
     );
   }, [currentUserRequest, swapRequests]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (currentUserRequest) {
         const newCount = matches.length - lastSeenMatchCount;
         if (newCount > 0) {
@@ -423,7 +439,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
                         <TransactionHistory 
                             transactions={transactions}
                             currentUserRequestId={currentUserRequest.id}
-                            allRequests={allRequestsEver}
+                            allRequests={allUsers}
                         />
                     </section>
                 </div>
@@ -478,9 +494,10 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, onSim
               </h2>
               <SuccessStories 
                   transactions={transactions}
-                  allRequests={allRequestsEver}
-                  currentUserRequestId={currentUserRequest?.id || lastActiveUserId || null}
+                  allRequests={allUsers}
+                  currentUserRequestId={registeredUser.employeeId}
                   highlightedTransactionId={highlightedTransactionId}
+                  onSimulateUser={onSimulateUser}
               />
           </section>
       )}

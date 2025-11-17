@@ -1,7 +1,18 @@
-
-
 // FIX: Added RestSwapRequest and Debt to the import to support new demo data.
-import type { SwapRequest, Transaction, RestSwapRequest, Debt } from './types';
+import type { SwapRequest, Transaction, RestSwapRequest, Debt, Administrator } from './types';
+
+// --- DEVELOPMENT CONFIGURATION ---
+// Set to `true` to relax rules for testing (e.g., allow duplicate emails/whatsapp).
+// Set to `false` for production to enforce strict validation.
+export const IS_DEVELOPMENT_MODE = true;
+
+
+export const ADMINISTRATORS: Administrator[] = [
+  { id: 'admin-master', name: 'JLBG', email: 'bellotgjl@gmail.com', whatsapp: '645515863', role: 'master' },
+  { id: 'admin-2', name: 'Admin Delegado 1', email: 'admin1@example.com', whatsapp: '600000001', role: 'delegate' },
+  { id: 'admin-3', name: 'Admin Delegado 2', email: 'admin2@example.com', whatsapp: '600000002', role: 'delegate' },
+  { id: 'admin-4', name: 'Admin Delegado 3', email: 'admin3@example.com', whatsapp: '600000003', role: 'delegate' },
+];
 
 export const MONTHS: string[] = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -39,34 +50,27 @@ export function getFortnightLabel(id: string): string {
 
 // --- DEMO DATA ---
 
-const updatedContactInfo = {
+// Centralized contact info for development, as requested.
+const devAdminContactInfo = {
     email: 'bellotgjl@gmail.com',
     whatsapp: '645515863'
 };
 
-const baseRequests: Omit<SwapRequest, 'email' | 'whatsapp'>[] = [
+const baseRequests: Omit<SwapRequest, 'email' | 'whatsapp' | 'status'>[] = [
     // Se han eliminado de esta lista los usuarios que ya tienen un caso de éxito
     // para mantener la coherencia de los datos. Sus solicitudes ya no están "activas".
-    // { id: 'C001', employeeId: 'C001', employeeName: 'Ana García', employeeType: 'Conductor', has: ['julio-1', 'agosto-2'], wants: ['enero-1', 'diciembre-2'] }, // In TS007
-    // { id: 'C002', employeeId: 'C002', employeeName: 'Carlos Rodriguez', employeeType: 'Conductor', has: ['enero-1', 'junio-1'], wants: ['julio-1', 'agosto-1'] }, // In TS007
     { id: 'C003', employeeId: 'C003', employeeName: 'Lucía Fernández', employeeType: 'Conductor', has: ['agosto-1', 'septiembre-1'], wants: ['junio-2', 'diciembre-1'] },
-    // { id: 'C004', employeeId: 'C004', employeeName: 'Javier Moreno', employeeType: 'Conductor', has: ['mayo-2', 'octubre-1'], wants: ['julio-2', 'septiembre-2'] }, // In TS010
     { id: 'C005', employeeId: 'C005', employeeName: 'Elena Jiménez', employeeType: 'Conductor', has: ['diciembre-1'], wants: ['agosto-1'] },
     { id: 'C006', employeeId: 'C006', employeeName: 'Miguel Ruiz', employeeType: 'Conductor', has: ['febrero-1', 'noviembre-2'], wants: ['marzo-1', 'julio-1'] },
-    // { id: 'C007', employeeId: 'C007', employeeName: 'Isabel Alonso', employeeType: 'Conductor', has: ['julio-2'], wants: ['mayo-2'] }, // In TS010
     { id: 'C008', employeeId: 'C008', employeeName: 'David Sanz', employeeType: 'Conductor', has: ['marzo-1'], wants: ['febrero-1'] },
     // Taller (8)
     { id: 'T001', employeeId: 'T001', employeeName: 'Sofía Martínez', employeeType: 'Taller', has: ['septiembre-2', 'octubre-1'], wants: ['mayo-1', 'junio-2'] },
     { id: 'T002', employeeId: 'T002', employeeName: 'David López', employeeType: 'Taller', has: ['mayo-1', 'diciembre-2'], wants: ['agosto-1', 'septiembre-2'] },
-    // { id: 'T003', employeeId: 'T003', employeeName: 'Laura González', employeeType: 'Taller', has: ['julio-1'], wants: ['agosto-2'] }, // In TS008
-    // { id: 'T004', employeeId: 'T004', employeeName: 'Pablo Pérez', employeeType: 'Taller', has: ['agosto-2'], wants: ['julio-1'] }, // In TS008
     { id: 'T005', employeeId: 'T005', employeeName: 'Carmen Romero', employeeType: 'Taller', has: ['junio-2'], wants: ['septiembre-2'] },
     { id: 'T006', employeeId: 'T006', employeeName: 'Adrián Sánchez', employeeType: 'Taller', has: ['enero-2', 'febrero-1'], wants: ['noviembre-1', 'diciembre-1'] },
-    // { id: 'T007', employeeId: 'T007', employeeName: 'Paula Díaz', employeeType: 'Taller', has: ['marzo-2'], wants: ['abril-1'] }, // In TS009
-    // { id: 'T008', employeeId: 'T008', employeeName: 'Sergio Gil', employeeType: 'Taller', has: ['abril-1'], wants: ['marzo-2'] }, // In TS009
 ];
 
-const newUser: Omit<SwapRequest, 'email' | 'whatsapp'> = {
+const newUser: Omit<SwapRequest, 'email' | 'whatsapp' | 'status'> = {
     id: '3728',
     employeeId: '3728',
     employeeName: 'José Luis Bellot Gamez',
@@ -76,9 +80,11 @@ const newUser: Omit<SwapRequest, 'email' | 'whatsapp'> = {
 };
 
 // -- Vacation Swap App Data --
+// Assign the admin's contact info to all demo users for easy testing.
 export const initialRequests: SwapRequest[] = [
-    { ...newUser, ...updatedContactInfo },
-    ...baseRequests.map(req => ({ ...req, ...updatedContactInfo }))
+    { ...newUser, ...devAdminContactInfo, status: 'active' },
+    // FIX: Added a type assertion to ensure the 'status' property is correctly typed as "active" and not widened to a generic 'string', resolving the assignment error to SwapRequest[].
+    ...baseRequests.map(req => ({ ...req, ...devAdminContactInfo, status: 'active' as SwapRequest['status'] }))
 ];
 
 export const initialTransactions: Transaction[] = [
@@ -106,7 +112,8 @@ export const initialTransactions: Transaction[] = [
     { id: 'TF010', initiatorId: 'C002', receiverId: 'C003', initiatorGives: ['agosto-1'], receiverGives: ['junio-2'], timestamp: Date.now() - 86400000 * 1, status: 'expired' },
 ];
 
-const baseAllRequestsEverForDemo: Omit<SwapRequest, 'email' | 'whatsapp'>[] = [
+// FIX: Changed the type to allow for optional email and whatsapp properties, as the `B001` user object contains them while others do not. This resolves multiple type errors.
+const baseAllRequestsEverForDemo: (Omit<SwapRequest, 'email' | 'whatsapp' | 'status'> & { email?: string; whatsapp?: string; })[] = [
     ...baseRequests,
     { id: 'C001', employeeId: 'C001', employeeName: 'Ana García', employeeType: 'Conductor', has: ['julio-1', 'agosto-2'], wants: ['enero-1', 'diciembre-2'] },
     { id: 'C002', employeeId: 'C002', employeeName: 'Carlos Rodriguez', employeeType: 'Conductor', has: ['enero-1', 'junio-1'], wants: ['julio-1', 'agosto-1'] },
@@ -130,9 +137,26 @@ const baseAllRequestsEverForDemo: Omit<SwapRequest, 'email' | 'whatsapp'>[] = [
     { id: 'T012', employeeId: 'T012', employeeName: 'Manuel Marín', employeeType: 'Taller', has: [], wants: [] },
     { id: 'C015', employeeId: 'C015', employeeName: 'Silvia Ibáñez', employeeType: 'Conductor', has: [], wants: [] },
     { id: 'C016', employeeId: 'C016', employeeName: 'Roberto Pascual', employeeType: 'Conductor', has: [], wants: [] },
+     // Blocked user for demo
+    { id: 'B001', employeeId: 'B001', employeeName: 'Usuario Malicioso', employeeType: 'Conductor', has: [], wants: [], email: 'blocked@test.com', whatsapp: '666666666' },
 ];
 
-export const allRequestsEverForDemo: SwapRequest[] = baseAllRequestsEverForDemo.map(req => ({ ...req, ...updatedContactInfo }));
+export const allRequestsEverForDemo: SwapRequest[] = baseAllRequestsEverForDemo.map(req => {
+    const isBlocked = req.id === 'B001';
+    // During development, all users get admin contact info for easy testing, EXCEPT the specifically blocked user for the demo case.
+    const contactInfo = IS_DEVELOPMENT_MODE && !isBlocked 
+        ? devAdminContactInfo 
+        : { email: req.email || devAdminContactInfo.email, whatsapp: req.whatsapp || devAdminContactInfo.whatsapp };
+
+    return {
+        ...req,
+        ...contactInfo,
+        // FIX: The status property was being inferred as a generic 'string' by TypeScript from the ternary expression. This is incompatible with the specific literal type '"active" | "blocked"' defined in the SwapRequest interface. An explicit type assertion is added to correct this.
+        status: (isBlocked ? 'blocked' : 'active') as SwapRequest['status'],
+        blockReason: isBlocked ? 'Actividad sospechosa detectada.' : undefined,
+    };
+});
+
 
 // FIX: Added missing demo data for Rest Swap App
 const today = new Date();

@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+import * as React from 'react';
 
 const ConstructionIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor">
@@ -54,7 +56,6 @@ const AppSelector: React.FC<{ onSelectApp: (app: string) => void }> = ({ onSelec
                     title="Cambio Descanso"
                     description="Organiza cambios en tus días de descanso con otros compañeros."
                     onClick={() => onSelectApp('rest')}
-                    disabled
                 />
                  <AppCard 
                     title="Cambio Servicio"
@@ -66,7 +67,6 @@ const AppSelector: React.FC<{ onSelectApp: (app: string) => void }> = ({ onSelec
                     title="Tablón Anuncios"
                     description="Publica y consulta anuncios de interés general para el personal."
                     onClick={() => onSelectApp('board')}
-                    disabled
                 />
             </div>
         </div>

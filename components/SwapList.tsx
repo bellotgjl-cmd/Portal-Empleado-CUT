@@ -1,9 +1,10 @@
 
 
 
-import React, { useState } from 'react';
+
+import * as React from 'react';
 import type { SwapRequest } from '../types';
-import type { RegisteredUser } from '../App';
+import type { RegisteredUser } from '../types';
 import { getFortnightLabel } from '../constants';
 
 interface SwapListProps {
@@ -20,7 +21,7 @@ const FortnightPill: React.FC<{ id: string, color: string }> = ({ id, color }) =
 
 
 const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onSimulateUser }) => {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   const handleShare = (request: SwapRequest) => {
     const shareText = `Echa un vistazo a esta propuesta de intercambio de ${request.employeeName} en el Portal del Empleado. Tiene disponible "${request.has.map(getFortnightLabel).join(', ')}" y busca "${request.wants.map(getFortnightLabel).join(', ')}".`;
@@ -99,8 +100,8 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
                     onClick={() => {
-                        const { id, has, wants, ...userToSimulate } = req;
-                        onSimulateUser(userToSimulate as RegisteredUser);
+                        const { id, has, wants, status, blockReason, ...userToSimulate } = req;
+                        onSimulateUser(userToSimulate);
                     }}
                     className="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-sm flex items-center justify-center shadow-md transition-all transform hover:scale-105"
                     title={`Simular vista de ${req.employeeName}`}

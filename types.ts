@@ -1,5 +1,13 @@
 export type FortnightId = string;
 
+export interface Administrator {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  role: 'master' | 'delegate';
+}
+
 export interface SwapRequest {
   id: string;
   employeeId: string;
@@ -9,6 +17,8 @@ export interface SwapRequest {
   whatsapp: string;
   has: FortnightId[];
   wants: FortnightId[];
+  status: 'active' | 'blocked';
+  blockReason?: string;
 }
 
 export interface TradeProposal {
@@ -55,10 +65,30 @@ export interface Debt {
   createdAt: number;
 }
 
+export type AnnouncementCategory = 'mercadillo' | 'objetos_perdidos' | 'avisos_generales';
+
+export interface Comment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: number;
+}
+
 export interface Announcement {
   id: string;
+  authorId: string;
   author: string;
   title: string;
   content: string;
   createdAt: number;
+  expiresAt: number;
+  category: AnnouncementCategory;
+  includeContact: boolean;
+  comments: Comment[];
+  status: 'active' | 'archived';
+  archiveReason?: 'success' | 'no_reason' | 'expired';
+  renewalCount?: number;
 }
+
+export type RegisteredUser = Omit<SwapRequest, 'id' | 'has' | 'wants' | 'status' | 'blockReason'>;

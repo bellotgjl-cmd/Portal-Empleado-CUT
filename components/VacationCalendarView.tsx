@@ -1,6 +1,4 @@
-
-
-import React, { useState, useMemo } from 'react';
+import * as React from 'react';
 import type { RestSwapRequest } from '../types';
 import { MONTHS } from '../constants';
 
@@ -12,8 +10,8 @@ interface RestAvailabilityCalendarProps {
 const WEEK_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const PILL_COLORS = ['bg-sky-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500', 'bg-rose-500'];
 
-const RestAvailabilityCalendar: React.FC<RestAvailabilityCalendarProps> = ({ requests, onManageSwap }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+const VacationCalendarView: React.FC<RestAvailabilityCalendarProps> = ({ requests, onManageSwap }) => {
+  const [currentDate, setCurrentDate] = React.useState(new Date());
 
   const changeMonth = (offset: number) => {
     setCurrentDate(prev => {
@@ -23,7 +21,7 @@ const RestAvailabilityCalendar: React.FC<RestAvailabilityCalendarProps> = ({ req
     });
   };
 
-  const requestsByDate = useMemo(() => {
+  const requestsByDate = React.useMemo(() => {
     const map = new Map<string, RestSwapRequest[]>();
     requests.forEach(req => {
       req.offeredDays.forEach(dayString => {
@@ -78,8 +76,8 @@ const RestAvailabilityCalendar: React.FC<RestAvailabilityCalendarProps> = ({ req
           const cellDate = new Date(year, month, day);
           const dateKey = cellDate.toDateString();
           const dayRequests = requestsByDate.get(dateKey) || [];
-          // FIX: The type inference for Map values was failing. Spread syntax often has better type inference in these cases.
-          const uniqueDayRequests = [...new Map(dayRequests.map(item => [item.id, item])).values()];
+          // FIX: De-duplicate requests by ID to ensure each person is only shown once per day. This also helps with type inference.
+          const uniqueDayRequests = Array.from(new Map(dayRequests.map(item => [item.id, item])).values());
           const isToday = today.toDateString() === dateKey;
 
           return (
@@ -89,7 +87,8 @@ const RestAvailabilityCalendar: React.FC<RestAvailabilityCalendarProps> = ({ req
             >
               <span className={`font-bold ${isToday ? 'text-indigo-600' : 'text-gray-700'}`}>{day}</span>
               <div className="mt-1 space-y-1 overflow-y-auto">
-                 {uniqueDayRequests.map((req, index) => (
+                 {/* FIX: Explicitly type 'req' as RestSwapRequest to resolve type inference issues. */}
+                 {uniqueDayRequests.map((req: RestSwapRequest, index) => (
                     <button 
                         key={req.id}
                         onClick={() => onManageSwap(req)}
@@ -119,4 +118,4 @@ const RestAvailabilityCalendar: React.FC<RestAvailabilityCalendarProps> = ({ req
   );
 };
 
-export default RestAvailabilityCalendar;
+export default VacationCalendarView;

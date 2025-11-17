@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import * as React from 'react';
 import type { RestSwapRequest } from '../types';
 import RestDayCalendar from './RestDayCalendar';
 
@@ -10,7 +11,7 @@ interface SwapProposalModalProps {
 }
 
 const SwapProposalModal: React.FC<SwapProposalModalProps> = ({ request, onClose, onCreateDebt, onProposeSwap }) => {
-    const [selectedDays, setSelectedDays] = useState<string[]>([]);
+    const [selectedDays, setSelectedDays] = React.useState<string[]>([]);
     
     const handleDayToggle = (day: string) => {
         // Allow selecting only one day for the proposal
@@ -41,7 +42,7 @@ const SwapProposalModal: React.FC<SwapProposalModalProps> = ({ request, onClose,
                         Gestionar cambio con {request.employeeName.split(' (')[0]}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>

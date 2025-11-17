@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
-import type { RegisteredUser } from '../App';
+
+import * as React from 'react';
+import type { RegisteredUser } from '../types';
 import type { SwapRequest } from '../types';
+import { ADMINISTRATORS } from '../constants';
 
 interface LoginScreenProps {
   allUsers: SwapRequest[];
@@ -10,8 +12,8 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ allUsers, onLogin, onGoToRegister }) => {
-    const [employeeId, setEmployeeId] = useState('');
-    const [error, setError] = useState<string | null>(null);
+    const [employeeId, setEmployeeId] = React.useState('');
+    const [error, setError] = React.useState<string | null>(null);
 
     const handleLoginAttempt = (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,11 +29,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ allUsers, onLogin, onGoToRegi
             return;
         }
 
-        // In a real app, this would be an API call. For the demo, we check our list.
         const user = allUsers.find(u => u.employeeId === id);
 
         if (user) {
-            const { id: swapId, has, wants, ...registeredUserData } = user;
+            if (user.status === 'blocked') {
+                const activeAdmin = ADMINISTRATORS.find(a => a.id === localStorage.getItem('activeAdminId')) || ADMINISTRATORS.find(a => a.role === 'master');
+                const adminContact = activeAdmin ? `Contacto del administrador: ${activeAdmin.email} / ${activeAdmin.whatsapp}` : "Contacta con el administrador.";
+                setError(`Tu cuenta ha sido bloqueada. Razón: ${user.blockReason || 'No especificada'}. ${adminContact}`);
+                return;
+            }
+            const { id: swapId, has, wants, status, blockReason, ...registeredUserData } = user;
             onLogin(registeredUserData);
         } else {
             setError('Número de empleado no encontrado. Por favor, regístrate si eres nuevo.');
