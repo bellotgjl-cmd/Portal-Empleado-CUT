@@ -78,7 +78,7 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
                   checked={isFullMonthSelected}
                   onChange={() => handleMonthToggle(month)}
                   disabled={isMonthToggleDisabled}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-200"
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-200"
                   aria-label={`Seleccionar mes completo de ${month}`}
                 />
               </div>
@@ -90,10 +90,10 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
                 // Disable individual fortnights if the full month is selected, the selection limit is reached, or it's in the disabledIds list.
                 const isDisabled = isFullMonthSelected || (!isSelected && limit !== undefined && selected.length >= limit) || disabledIds.includes(fortnight.id);
                 const buttonClass = isSelected
-                  ? 'bg-indigo-600 text-white shadow-md'
+                  ? 'bg-teal-600 text-white shadow-md'
                   : isDisabled
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-white hover:bg-indigo-100 text-gray-800';
+                  : 'bg-white hover:bg-teal-100 text-gray-800';
 
                 return (
                   <button

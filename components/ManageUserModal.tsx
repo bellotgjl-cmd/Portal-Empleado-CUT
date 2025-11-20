@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { SwapRequest, RegisteredUser } from '../types';
 
@@ -94,7 +95,7 @@ const ManageUserModal: React.FC<ManageUserModalProps> = ({ user, onClose, onBloc
                             Desbloquear Usuario
                         </button>
                     )}
-                     <button onClick={handleSimulateClick} className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700">
+                     <button onClick={handleSimulateClick} className="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700">
                         Simular Vista de Usuario
                     </button>
                 </div>

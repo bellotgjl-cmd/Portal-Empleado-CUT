@@ -134,7 +134,7 @@ Fdo: ${initiator.employeeName}                        Fdo: ${receiver.employeeNa
                     </a>
                      <button 
                         onClick={handleGeneratePdf}
-                        className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors w-full sm:w-auto"
+                        className="bg-teal-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-teal-700 transition-colors w-full sm:w-auto"
                     >
                         {pdfButtonText}
                     </button>

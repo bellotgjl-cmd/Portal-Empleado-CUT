@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { Announcement } from '../types';
 
@@ -35,17 +36,17 @@ const ArchiveAnnouncementModal: React.FC<ArchiveAnnouncementModalProps> = ({ ann
         </div>
 
         <div className="space-y-4">
-            <p className="text-gray-700">Vas a archivar el anuncio: <strong className="text-indigo-600">"{announcement.title}"</strong>.</p>
+            <p className="text-gray-700">Vas a archivar el anuncio: <strong className="text-teal-600">"{announcement.title}"</strong>.</p>
             <p className="text-gray-700">Una vez archivado, ya no será visible en la lista de anuncios activos. Por favor, selecciona el motivo:</p>
             
             <fieldset className="space-y-2">
                 <legend className="sr-only">Motivo de archivado</legend>
-                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reason === 'success' ? 'bg-indigo-50 border-indigo-400' : 'hover:bg-gray-50'}`}>
-                    <input type="radio" name="archiveReason" value="success" checked={reason === 'success'} onChange={() => setReason('success')} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"/>
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reason === 'success' ? 'bg-teal-50 border-teal-400' : 'hover:bg-gray-50'}`}>
+                    <input type="radio" name="archiveReason" value="success" checked={reason === 'success'} onChange={() => setReason('success')} className="h-4 w-4 text-teal-600 focus:ring-teal-500"/>
                     <span className="ml-3 font-semibold text-gray-800">El anuncio tuvo éxito</span>
                 </label>
-                 <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reason === 'no_reason' ? 'bg-indigo-50 border-indigo-400' : 'hover:bg-gray-50'}`}>
-                    <input type="radio" name="archiveReason" value="no_reason" checked={reason === 'no_reason'} onChange={() => setReason('no_reason')} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"/>
+                 <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reason === 'no_reason' ? 'bg-teal-50 border-teal-400' : 'hover:bg-gray-50'}`}>
+                    <input type="radio" name="archiveReason" value="no_reason" checked={reason === 'no_reason'} onChange={() => setReason('no_reason')} className="h-4 w-4 text-teal-600 focus:ring-teal-500"/>
                     <span className="ml-3 font-semibold text-gray-800">Archivar sin motivo específico</span>
                 </label>
             </fieldset>
@@ -60,7 +61,7 @@ const ArchiveAnnouncementModal: React.FC<ArchiveAnnouncementModalProps> = ({ ann
             </button>
              <button 
                 onClick={handleSubmit} 
-                className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+                className="bg-teal-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-teal-700 transition-colors"
             >
                 Confirmar Archivo
             </button>

@@ -64,7 +64,7 @@ const SwapProposalModal: React.FC<SwapProposalModalProps> = ({ request, onClose,
                             <button
                                 onClick={handlePropose}
                                 disabled={selectedDays.length === 0}
-                                className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                className="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                             >
                                 Proponer Día
                             </button>

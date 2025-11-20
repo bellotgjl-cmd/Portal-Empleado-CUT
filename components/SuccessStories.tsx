@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import * as React from 'react';
 import type { Transaction, SwapRequest } from '../types';
 import type { RegisteredUser } from '../types';
@@ -16,6 +10,7 @@ interface SuccessStoriesProps {
   currentUserRequestId: string | null;
   highlightedTransactionId?: string | null;
   onSimulateUser: (user: RegisteredUser) => void;
+  onFormalize?: (transactionId: string) => void;
 }
 
 const FortnightPill: React.FC<{ id: string, color: string }> = ({ id, color }) => (
@@ -24,7 +19,7 @@ const FortnightPill: React.FC<{ id: string, color: string }> = ({ id, color }) =
     </span>
 );
 
-const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allRequests, currentUserRequestId, highlightedTransactionId, onSimulateUser }) => {
+const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allRequests, currentUserRequestId, highlightedTransactionId, onSimulateUser, onFormalize }) => {
   const [formalizingTransaction, setFormalizingTransaction] = React.useState<Transaction | null>(null);
   const [initiatorForModal, setInitiatorForModal] = React.useState<SwapRequest | null>(null);
   const [receiverForModal, setReceiverForModal] = React.useState<SwapRequest | null>(null);
@@ -98,6 +93,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
       
       const otherPerson = isCurrentUserInvolved ? (initiator.id === currentUserRequestId ? receiver : initiator) : null;
       const isHighlighted = t.id === highlightedTransactionId;
+      const isFormalized = t.formalized;
 
       let mailtoLink = '';
       let whatsappLink = '';
@@ -114,28 +110,30 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
           mailtoLink = `mailto:${otherPerson.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           whatsappLink = `https://wa.me/${otherPerson.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappText)}`;
       }
-      
-      const handleSimulate = (userToSimulate: SwapRequest | null) => {
-        if (!userToSimulate) return;
-        const { id, has, wants, status, blockReason, ...registeredUserData } = userToSimulate;
-        onSimulateUser(registeredUserData);
-      };
-
 
       return (
             <div 
               key={t.id}
               ref={isHighlighted ? highlightedRef : null}
-              className={`bg-white p-6 rounded-xl shadow-lg border transition-all duration-500 ${isHighlighted ? 'border-indigo-500 ring-4 ring-indigo-500/20 animate-pulse-strong' : 'border-green-200'}`}>
+              className={`bg-white p-6 rounded-xl shadow-lg border transition-all duration-500 ${isHighlighted ? 'border-teal-500 ring-4 ring-teal-500/20 animate-pulse-strong' : 'border-green-200'} ${isFormalized ? 'opacity-90 bg-gray-50' : ''}`}
+            >
               <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="flex items-center space-x-4">
-                      <span className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.001 3.001 0 015.658 0M12 6V3m0 3V6m0 3v6m0-9a3 3 0 100-6 3 3 0 000 6z" />
-                          </svg>
+                      <span className={`flex items-center justify-center h-12 w-12 rounded-full ${isFormalized ? 'bg-gray-200' : 'bg-green-100'}`}>
+                          {isFormalized ? (
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-gray-500" fill="none" viewBox="0 0 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                             </svg>
+                          ) : (
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.001 3.001 0 015.658 0M12 6V3m0 3V6m0 3v6m0-9a3 3 0 100-6 3 3 0 000 6z" />
+                            </svg>
+                          )}
                       </span>
                       <div>
-                          <h4 className="font-bold text-xl text-gray-800">¡Intercambio Exitoso!</h4>
+                          <h4 className="font-bold text-xl text-gray-800">
+                              {isFormalized ? 'Cambio Formalizado' : '¡Intercambio Exitoso!'}
+                          </h4>
                           <p className="text-sm text-gray-500">
                               Confirmado el {new Date(t.timestamp).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
                           </p>
@@ -143,7 +141,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
                   </div>
                   {isCurrentUserInvolved && otherPerson && (
                       <div className="flex items-center space-x-3">
-                          <a href={mailtoLink} target="_blank" rel="noopener noreferrer" title={`Enviar email a ${otherPerson.email}`} className="text-gray-400 hover:text-indigo-600 transition-colors">
+                          <a href={mailtoLink} target="_blank" rel="noopener noreferrer" title={`Enviar email a ${otherPerson.email}`} className="text-gray-400 hover:text-teal-600 transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                               </svg>
@@ -160,7 +158,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
                   <span className="font-semibold">{initiator.employeeName}</span> y <span className="font-semibold">{receiver.employeeName}</span> han completado un intercambio.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center mb-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm font-semibold text-gray-600 mb-2">{initiator.employeeName} entregó:</p>
                       <div className="flex flex-wrap gap-2 justify-center">
@@ -176,42 +174,36 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
               </div>
               
                 {isCurrentUserInvolved && (
-                    <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                    <button
-                        onClick={() => handleFormalizeClick(t, initiator, receiver)}
-                        className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block -mt-1 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Formalizar Cambio Oficial
-                    </button>
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                        <div className="flex flex-col items-center space-y-4">
+                             <div className={`p-3 border rounded-lg w-full max-w-md transition-colors duration-300 ${isFormalized ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'}`}>
+                                <label className="flex items-center w-full cursor-pointer select-none">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={!!isFormalized}
+                                        disabled={!!isFormalized}
+                                        onChange={() => {
+                                            if (!isFormalized && onFormalize) {
+                                                onFormalize(t.id);
+                                            }
+                                        }}
+                                        className={`h-5 w-5 focus:ring-teal-500 border-gray-300 rounded ${isFormalized ? 'text-green-600 cursor-default' : 'text-teal-600 cursor-pointer'}`}
+                                    />
+                                    <span className={`ml-3 block text-sm font-medium ${isFormalized ? 'text-green-800' : 'text-gray-800'}`}>
+                                        {isFormalized ? 'Cambio formalizado' : 'Marcar como cambio formalizado'}
+                                    </span>
+                                </label>
+                            </div>
+                            
+                             <button
+                                onClick={() => handleFormalizeClick(t, initiator, receiver)}
+                                className="text-teal-600 text-sm font-semibold hover:text-teal-800 underline"
+                            >
+                                Descargar Hoja de Formalización (PDF)
+                            </button>
+                        </div>
                     </div>
                 )}
-                
-                {/* --- DEMO/TESTING SECTION --- */}
-                <div className="mt-6 pt-4 border-t-2 border-dashed border-purple-300 bg-purple-50 p-4 rounded-lg">
-                    <h5 className="text-center font-bold text-sm text-purple-800 mb-3">Control de Pruebas (Demo)</h5>
-                    <div className="flex justify-center items-center gap-4">
-                        <button
-                            onClick={() => handleSimulate(initiator)}
-                            className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-xs flex items-center justify-center shadow-md transition-all transform hover:scale-105"
-                            title={`Simular vista de ${initiator.employeeName}`}
-                        >
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                            Simular como {initiator.employeeName.split(' ')[0]}
-                        </button>
-                        <button
-                            onClick={() => handleSimulate(receiver)}
-                            className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-xs flex items-center justify-center shadow-md transition-all transform hover:scale-105"
-                            title={`Simular vista de ${receiver.employeeName}`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                           Simular como {receiver.employeeName.split(' ')[0]}
-                        </button>
-                    </div>
-                </div>
-
             </div>
       );
   }
@@ -222,7 +214,7 @@ const SuccessStories: React.FC<SuccessStoriesProps> = ({ transactions, allReques
         {userSuccesses.length > 0 && (
           <section>
             {(otherSuccesses.length > 0) && (
-              <h3 className="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-indigo-400">
+              <h3 className="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-teal-400">
                 Mis Casos de Éxito
               </h3>
             )}

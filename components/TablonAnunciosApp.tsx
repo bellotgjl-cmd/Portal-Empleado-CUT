@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import type { RegisteredUser } from '../types';
 import type { Announcement, AnnouncementCategory, Comment, SwapRequest } from '../types';
@@ -271,7 +270,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
     const getCategoryFilterButtonClasses = (buttonFilter: 'all' | AnnouncementCategory) => {
         const base = "px-4 py-2 font-semibold text-sm rounded-md transition-colors duration-200 focus:outline-none flex-grow text-center";
         if (categoryFilter === buttonFilter) {
-            return `${base} bg-indigo-600 text-white shadow`;
+            return `${base} bg-teal-600 text-white shadow`;
         }
         return `${base} bg-gray-200 text-gray-700 hover:bg-gray-300`;
     };
@@ -279,9 +278,9 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
     const getBoardViewButtonClasses = (buttonFilter: 'active' | 'archived') => {
         const base = "px-4 py-2 font-semibold rounded-md transition-colors duration-200 focus:outline-none";
          if (boardView === buttonFilter) {
-            return `${base} bg-indigo-600 text-white shadow`;
+            return `${base} bg-teal-600 text-white shadow`;
         }
-        return `${base} bg-white text-indigo-700 hover:bg-indigo-100 border border-indigo-200`;
+        return `${base} bg-white text-teal-700 hover:bg-teal-100 border border-teal-200`;
     };
 
     return (
@@ -309,7 +308,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                             {specialView !== 'none' ? (
                                 <button 
                                     onClick={() => setSpecialView('none')} 
-                                    className="flex items-center px-4 py-2 font-semibold text-sm rounded-md transition-colors duration-200 focus:outline-none bg-indigo-600 text-white hover:bg-indigo-700 shadow"
+                                    className="flex items-center px-4 py-2 font-semibold text-sm rounded-md transition-colors duration-200 focus:outline-none bg-teal-600 text-white hover:bg-teal-700 shadow"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 15l-3-3m0 0l3-3m-3 3h12a6 6 0 010 12h-3" /></svg>
                                     Volver a Anuncios
@@ -399,7 +398,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                 <div key={anno.id} className={`bg-white p-5 rounded-xl shadow-lg border ${isDimmed ? 'border-gray-100 opacity-80' : 'border-gray-200'}`}>
                                     <div className="flex justify-between items-start flex-wrap gap-y-2">
                                         <div className="flex-grow">
-                                            <h4 className="font-bold text-xl text-indigo-700">{anno.title}</h4>
+                                            <h4 className="font-bold text-xl text-teal-700">{anno.title}</h4>
                                             <p className="text-sm text-gray-600 font-semibold">
                                                 Publicado por: {anno.author}
                                             </p>
@@ -475,7 +474,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                         <div className="flex items-center space-x-3">
                                             <button 
                                                 onClick={() => handleToggleComments(anno.id)}
-                                                className={`flex items-center text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors rounded-full px-3 py-1 ${hasNewComments ? 'animate-pulse-strong bg-yellow-100' : ''}`}
+                                                className={`flex items-center text-sm font-semibold text-gray-600 hover:text-teal-600 transition-colors rounded-full px-3 py-1 ${hasNewComments ? 'animate-pulse-strong bg-yellow-100' : ''}`}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                                                 Comentarios ({anno.comments.length}) {hasNewComments && <span className="ml-2 text-yellow-800 font-bold text-xs">NUEVO</span>}
@@ -483,7 +482,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                             
                                             {anno.includeContact && authorDetails && (
                                                 <>
-                                                    <a href={mailtoLink} target="_blank" rel="noopener noreferrer" title={`Enviar email a ${authorDetails.email}`} className="text-gray-400 hover:text-indigo-600 transition-colors">
+                                                    <a href={mailtoLink} target="_blank" rel="noopener noreferrer" title={`Enviar email a ${authorDetails.email}`} className="text-gray-400 hover:text-teal-600 transition-colors">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                                     </a>
                                                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer" title={`Contactar por WhatsApp`} className="text-gray-400 hover:text-green-500 transition-colors">
@@ -510,10 +509,10 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                                     value={replyInputs[anno.id] || ''}
                                                     onChange={(e) => setReplyInputs(prev => ({...prev, [anno.id]: e.target.value}))}
                                                     rows={2}
-                                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                                                     placeholder="Escribe una respuesta..."
                                                 />
-                                                <button onClick={() => handlePostReply(anno.id)} className="bg-indigo-500 text-white font-semibold text-sm py-2 px-3 rounded-lg shadow hover:bg-indigo-600">
+                                                <button onClick={() => handlePostReply(anno.id)} className="bg-teal-500 text-white font-semibold text-sm py-2 px-3 rounded-lg shadow hover:bg-teal-600">
                                                     Enviar
                                                 </button>
                                             </div>
@@ -571,7 +570,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                 id="title"
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                                 placeholder="Asunto del anuncio"
                             />
                         </div>
@@ -582,7 +581,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                 value={newContent}
                                 onChange={(e) => setNewContent(e.target.value)}
                                 rows={4}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                                 placeholder="Escribe aquí los detalles de tu anuncio..."
                             />
                         </div>
@@ -592,7 +591,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                 id="category"
                                 value={newCategory}
                                 onChange={(e) => setNewCategory(e.target.value as AnnouncementCategory)}
-                                className="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                             >
                                 <option value="avisos_generales">Aviso General</option>
                                 <option value="mercadillo">Mercadillo (Vendo/Compro/Alquilo)</option>
@@ -608,7 +607,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                                 onChange={(e) => setNewExpiresAt(e.target.value)}
                                 min={todayDate}
                                 max={maxDate}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                             />
                         </div>
 
@@ -616,11 +615,11 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                             <label className="block text-sm font-medium text-gray-700 mb-2">¿Añadir información de contacto?</label>
                             <div className="flex items-center space-x-4">
                                 <label className="flex items-center">
-                                    <input type="radio" name="contact" checked={includeContact} onChange={() => setIncludeContact(true)} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" />
+                                    <input type="radio" name="contact" checked={includeContact} onChange={() => setIncludeContact(true)} className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300" />
                                     <span className="ml-2 text-sm text-gray-700">Sí</span>
                                 </label>
                                 <label className="flex items-center">
-                                    <input type="radio" name="contact" checked={!includeContact} onChange={() => setIncludeContact(false)} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" />
+                                    <input type="radio" name="contact" checked={!includeContact} onChange={() => setIncludeContact(false)} className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300" />
                                     <span className="ml-2 text-sm text-gray-700">No</span>
                                 </label>
                             </div>
@@ -630,7 +629,7 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
                         
                         <button 
                             type="submit" 
-                            className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105"
+                            className="w-full bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-teal-700 transition-transform transform hover:scale-105"
                         >
                             Publicar Anuncio
                         </button>
@@ -648,5 +647,4 @@ const TablonAnunciosApp: React.FC<TablonAnunciosAppProps> = ({ registeredUser, a
         </>
     );
 };
-// FIX: Added missing default export for the TablonAnunciosApp component.
 export default TablonAnunciosApp;

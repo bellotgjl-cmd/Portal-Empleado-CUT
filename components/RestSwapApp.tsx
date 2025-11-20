@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { RegisteredUser } from '../types';
 import type { RestSwapRequest, Debt } from '../types';
@@ -115,7 +116,7 @@ const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
      const getTabClasses = (tabName: 'request' | 'board' | 'debts' | 'calendar') => {
         const baseClasses = "px-6 py-2 font-bold text-lg rounded-t-lg transition-colors duration-300 focus:outline-none";
         if (view === tabName) {
-            return `${baseClasses} bg-white text-indigo-600 shadow-md`;
+            return `${baseClasses} bg-white text-teal-600 shadow-md`;
         }
         return `${baseClasses} bg-gray-200 text-gray-600 hover:bg-gray-300`;
     };
@@ -123,7 +124,7 @@ const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
      const getBoardTabClasses = (tabName: 'active' | 'successful' | 'expired') => {
         const baseClasses = "px-4 py-2 font-semibold text-sm rounded-md transition-colors duration-200 focus:outline-none";
         if (boardView === tabName) {
-            return `${baseClasses} bg-indigo-600 text-white shadow`;
+            return `${baseClasses} bg-teal-600 text-white shadow`;
         }
         return `${baseClasses} bg-gray-200 text-gray-700 hover:bg-gray-300`;
     };
@@ -164,7 +165,7 @@ const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
             <main className="bg-white p-6 sm:p-8 rounded-b-xl shadow-xl min-h-[60vh]">
                 {view === 'request' && (
                     <section>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-indigo-500">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-teal-500">
                             Publicar una Petición
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -182,14 +183,14 @@ const RestSwapApp: React.FC<RestSwapAppProps> = ({ registeredUser }) => {
                                         value={myReason}
                                         onChange={(e) => setMyReason(e.target.value)}
                                         rows={6}
-                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"
                                         placeholder="Ej: Necesito cambiar un día por un asunto familiar, ofrezco varias alternativas..."
                                     />
                                 </div>
                                 {error && <p className="text-red-500 text-center text-sm bg-red-100 p-3 rounded-lg">{error}</p>}
                                 <button
                                     onClick={handleSubmit}
-                                    className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105"
+                                    className="w-full bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-transform transform hover:scale-105"
                                 >
                                     Publicar Petición
                                 </button>

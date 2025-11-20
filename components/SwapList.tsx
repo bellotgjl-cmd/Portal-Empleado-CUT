@@ -1,11 +1,8 @@
 
-
-
-
 import * as React from 'react';
 import type { SwapRequest } from '../types';
 import type { RegisteredUser } from '../types';
-import { getFortnightLabel } from '../constants';
+import { getFortnightLabel, DEMO_USERS } from '../constants';
 
 interface SwapListProps {
   requests: SwapRequest[];
@@ -35,6 +32,42 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
         alert('No se pudo copiar el enlace.');
     });
   };
+
+  const handleSimulateClick = (request: SwapRequest) => {
+      if (!onSimulateUser) return;
+
+      // Try to find the full user data in DEMO_USERS to get the correct initialAssignment
+      const demoUser = DEMO_USERS.find(u => u.employeeId === request.employeeId);
+      
+      let userToSimulate: RegisteredUser;
+
+      if (demoUser) {
+          // Reconstruct RegisteredUser from demo data
+          userToSimulate = {
+              employeeId: demoUser.employeeId,
+              employeeName: demoUser.employeeName,
+              employeeType: demoUser.employeeType as any,
+              email: demoUser.email,
+              whatsapp: demoUser.whatsapp,
+              initialAssignment: demoUser.initialAssignment,
+              password: demoUser.password
+          };
+      } else {
+          // If it's a newly registered user not in demo constants, construct it from the request
+          // We assume 'has' is their initial assignment for simulation purposes if we don't have the record
+          userToSimulate = {
+              employeeId: request.employeeId,
+              employeeName: request.employeeName,
+              employeeType: request.employeeType,
+              email: request.email,
+              whatsapp: request.whatsapp,
+              initialAssignment: request.has, // Fallback
+              password: '123' // Dummy
+          };
+      }
+      
+      onSimulateUser(userToSimulate);
+  };
   
   if (requests.length === 0) {
     return (
@@ -51,12 +84,12 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
         const isCurrentUser = req.id === currentUserRequestId;
         const typePillColor = req.employeeType === 'Conductor' ? 'bg-cyan-100 text-cyan-800' : 'bg-orange-100 text-orange-800';
         return (
-            <div key={req.id} className={`bg-white p-5 rounded-xl shadow-lg border ${isCurrentUser ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200'}`}>
+            <div key={req.id} className={`bg-white p-5 rounded-xl shadow-lg border relative ${isCurrentUser ? 'border-teal-500 ring-2 ring-teal-200' : 'border-gray-200'}`}>
                 <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                         <h4 className="font-bold text-lg text-gray-800">{req.employeeName}</h4>
                         {isCurrentUser && (
-                            <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Tú</span>
+                            <span className="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Tú</span>
                         )}
                     </div>
                     <div className="flex items-center space-x-3">
@@ -71,7 +104,7 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
                       ) : (
                           <button
                               onClick={() => handleShare(req)}
-                              className="text-gray-400 hover:text-indigo-600 transition-colors"
+                              className="text-gray-400 hover:text-teal-600 transition-colors"
                               aria-label="Compartir intercambio"
                               title="Compartir intercambio"
                           >
@@ -96,23 +129,23 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
                 </div>
                 </div>
             </div>
+
+            {/* DEMO ACTION BUTTON */}
             {!isCurrentUser && onSimulateUser && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <button
-                    onClick={() => {
-                        const { id, has, wants, status, blockReason, ...userToSimulate } = req;
-                        onSimulateUser(userToSimulate);
-                    }}
-                    className="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 text-sm flex items-center justify-center shadow-md transition-all transform hover:scale-105"
-                    title={`Simular vista de ${req.employeeName}`}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Tomar Control (Simular)
-                </button>
-              </div>
+                <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+                    <button
+                        onClick={() => handleSimulateClick(req)}
+                        className="flex items-center space-x-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors border border-indigo-200"
+                        title="Cambiar a este usuario para probar la app desde su perspectiva"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span>Actuar como {req.employeeName.split(' ')[0]}</span>
+                    </button>
+                </div>
             )}
+
             </div>
         );
       })}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { initialRequests, allRequestsEverForDemo, ADMINISTRATORS } from '../constants';
 import type { SwapRequest, Administrator, RegisteredUser } from '../types';
@@ -76,7 +77,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ allUsers, onSimulateUse
                                             disabled={masterAdmin?.id !== activeAdminId}
                                             className={`w-full text-left p-2 rounded-md border text-sm transition-colors ${
                                                 activeAdminId === admin.id 
-                                                ? 'bg-indigo-600 text-white border-indigo-600' 
+                                                ? 'bg-teal-600 text-white border-teal-600' 
                                                 : 'bg-white hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed'
                                             }`}
                                         >

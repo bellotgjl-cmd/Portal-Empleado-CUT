@@ -72,9 +72,9 @@ const RestDayCalendar: React.FC<RestDayCalendarProps> = ({ selectedDays, onDayTo
           if (isDisabled) {
               buttonClass += "text-gray-400 cursor-not-allowed bg-gray-100";
           } else if (isSelected) {
-              buttonClass += "bg-indigo-600 text-white font-bold shadow-md";
+              buttonClass += "bg-teal-600 text-white font-bold shadow-md";
           } else {
-              buttonClass += "hover:bg-indigo-100";
+              buttonClass += "hover:bg-teal-100";
           }
           
           return (

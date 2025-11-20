@@ -1,12 +1,11 @@
 
-
 import * as React from 'react';
 import VacationSwapApp from './components/VacationSwapApp';
 import LoginScreen from './components/LoginScreen';
 import RegistrationScreen from './components/RegistrationScreen';
 import AdminDashboard from './components/AdminDashboard';
 import type { SwapRequest, RegisteredUser } from './types';
-import { allRequestsEverForDemo } from './constants';
+import { DEMO_USERS } from './constants';
 import AppSelector from './components/AppSelector';
 import RestSwapApp from './components/RestSwapApp';
 import TablonAnunciosApp from './components/TablonAnunciosApp';
@@ -15,6 +14,7 @@ import UserMenu from './components/UserMenu';
 
 const App: React.FC = () => {
   const [registeredUser, setRegisteredUser] = React.useState<RegisteredUser | null>(null);
+  const [realUser, setRealUser] = React.useState<RegisteredUser | null>(null); // The actual user behind the simulation
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [simulatingFromAdmin, setSimulatingFromAdmin] = React.useState(false);
   const [authView, setAuthView] = React.useState<'login' | 'register'>('login');
@@ -24,6 +24,8 @@ const App: React.FC = () => {
   React.useEffect(() => {
     try {
       const storedUser = localStorage.getItem('employeePortalUser');
+      const storedRealUser = localStorage.getItem('employeePortalRealUser'); // Load preserved real user
+
       if (storedUser === 'admin') {
         setIsAdmin(true);
         setRegisteredUser(null);
@@ -32,23 +34,47 @@ const App: React.FC = () => {
         setIsAdmin(false);
       }
 
+      if (storedRealUser) {
+          setRealUser(JSON.parse(storedRealUser));
+      }
+
       const storedAllUsers = localStorage.getItem('employeePortalAllUsers');
       if (storedAllUsers) {
         setAllUsers(JSON.parse(storedAllUsers));
       } else {
-        setAllUsers(allRequestsEverForDemo);
+        // Initialize with DEMO USERS for testing
+        setAllUsers(DEMO_USERS as unknown as SwapRequest[]);
+        // Also save to LS so they persist across reloads until cleared
+        localStorage.setItem('employeePortalAllUsers', JSON.stringify(DEMO_USERS));
       }
 
     } catch (error) {
       console.error("Failed to parse user data from localStorage", error);
       localStorage.removeItem('employeePortalUser');
-      setAllUsers(allRequestsEverForDemo);
+      localStorage.removeItem('employeePortalRealUser');
+      setAllUsers([]);
     }
   }, []);
   
-  const handleUpdateUsers = (updatedUsers: SwapRequest[]) => {
+  const handleUpdateUsersList = (updatedUsers: SwapRequest[]) => {
       setAllUsers(updatedUsers);
       localStorage.setItem('employeePortalAllUsers', JSON.stringify(updatedUsers));
+  };
+
+  // New function to update the current logged-in user's data (e.g., setting initialAssignment)
+  const handleUpdateCurrentUser = (updatedUser: RegisteredUser) => {
+      setRegisteredUser(updatedUser);
+      localStorage.setItem('employeePortalUser', JSON.stringify(updatedUser));
+      
+      // Also update this user in the global list
+      const updatedAllUsers = allUsers.map(u => {
+          if (u.employeeId === updatedUser.employeeId) {
+              // Merge the new data (like initialAssignment) into the storage object
+              return { ...u, ...updatedUser, id: u.id }; 
+          }
+          return u;
+      });
+      handleUpdateUsersList(updatedAllUsers);
   };
 
   const handleLogin = (userData: RegisteredUser | 'admin') => {
@@ -61,22 +87,26 @@ const App: React.FC = () => {
         setRegisteredUser(userData);
         setIsAdmin(false);
     }
+    // Ensure we clear any stale realUser on fresh login
+    localStorage.removeItem('employeePortalRealUser');
+    setRealUser(null);
     setSelectedApp(null);
   };
 
   const handleRegister = (userData: RegisteredUser) => {
-    const newUserAsSwapRequest: SwapRequest = {
+    // When registering, we store the full object including password (in a real app, hash it)
+    // We use 'as any' or extend SwapRequest type internally, but for now we store it as is.
+    const newUserAsSwapRequest = {
         ...userData,
         id: userData.employeeId,
-        has: [],
+        has: [], // Swap Requests start empty
         wants: [],
         status: 'active',
-    };
+    } as unknown as SwapRequest; // Force cast to allow extra props like password storage in LS
     
     const updatedAllUsers = [...allUsers, newUserAsSwapRequest];
-    handleUpdateUsers(updatedAllUsers);
+    handleUpdateUsersList(updatedAllUsers);
 
-    // For this demo, registering just logs the user in directly.
     handleLogin(userData);
   };
 
@@ -85,9 +115,26 @@ const App: React.FC = () => {
         setRegisteredUser(null);
         setIsAdmin(true);
         setSimulatingFromAdmin(false);
+      } else if (realUser) {
+         // Stop Simulation logic: Restore real user
+         
+         // CRITICAL: Clear demo session data to ensure next session starts fresh with a new clone of real data
+         // This ensures the 'handshake' between real and demo users works on every new simulation attempt.
+         Object.keys(localStorage).forEach(key => {
+             if(key.startsWith('DEMO_SESSION_')) {
+                 localStorage.removeItem(key);
+             }
+         });
+
+         setRegisteredUser(realUser);
+         localStorage.setItem('employeePortalUser', JSON.stringify(realUser));
+         setRealUser(null);
+         localStorage.removeItem('employeePortalRealUser');
       } else {
         localStorage.removeItem('employeePortalUser');
+        localStorage.removeItem('employeePortalRealUser');
         setRegisteredUser(null);
+        setRealUser(null);
         setIsAdmin(false);
         setAuthView('login');
       }
@@ -96,9 +143,30 @@ const App: React.FC = () => {
 
   const handleSimulateUser = (userToSimulate: RegisteredUser) => {
     const isAdminInitiated = isAdmin;
-    setRegisteredUser(userToSimulate);
-    setIsAdmin(false);
-    setSimulatingFromAdmin(isAdminInitiated);
+    
+    if (isAdminInitiated) {
+        // Admin simulating: keep "admin" state behind the scenes to allow going back
+        setRegisteredUser(userToSimulate);
+        setIsAdmin(false);
+        setSimulatingFromAdmin(true);
+        // Do NOT write to localStorage, so refresh restores admin
+    } else {
+        // Regular user simulating (Demo Mode):
+        // 1. Save the current REAL user if not already saved
+        if (!realUser && registeredUser) {
+            setRealUser(registeredUser);
+            localStorage.setItem('employeePortalRealUser', JSON.stringify(registeredUser));
+        }
+
+        // 2. Switch to the simulated user
+        setRegisteredUser(userToSimulate);
+        setIsAdmin(false);
+        setSimulatingFromAdmin(false);
+        
+        // 3. Persist the simulated user as the "active" user in LS so refresh works
+        localStorage.setItem('employeePortalUser', JSON.stringify(userToSimulate));
+    }
+    
     setSelectedApp(null);
   };
 
@@ -119,7 +187,7 @@ const App: React.FC = () => {
     }
 
     if (isAdmin && !simulatingFromAdmin) {
-        return <AdminDashboard allUsers={allUsers} onSimulateUser={handleSimulateUser} onUpdateUsers={handleUpdateUsers} />;
+        return <AdminDashboard allUsers={allUsers} onSimulateUser={handleSimulateUser} onUpdateUsers={handleUpdateUsersList} />;
     }
 
     if (!registeredUser) return null;
@@ -130,7 +198,16 @@ const App: React.FC = () => {
 
     switch (selectedApp) {
       case 'vacations':
-        return <VacationSwapApp registeredUser={registeredUser} onSimulateUser={handleSimulateUser} allUsers={allUsers} />;
+        return (
+            <VacationSwapApp 
+                registeredUser={registeredUser}
+                realUser={realUser} 
+                onSimulateUser={handleSimulateUser} 
+                allUsers={allUsers}
+                onUpdateUser={handleUpdateCurrentUser}
+                onStopSimulation={handleLogout} 
+            />
+        );
       case 'rest':
         return <RestSwapApp registeredUser={registeredUser} />;
       case 'board':
@@ -140,7 +217,7 @@ const App: React.FC = () => {
         return (
           <div className="text-center py-10 px-6 bg-white rounded-xl shadow-lg">
             <h3 className="text-lg font-medium text-gray-500">Aplicación no disponible.</h3>
-            <button onClick={handleBackToMenu} className="mt-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700">
+            <button onClick={handleBackToMenu} className="mt-4 bg-teal-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-teal-700">
               Volver al menú
             </button>
           </div>
@@ -159,11 +236,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-       <header className="bg-white shadow-sm py-4 sticky top-0 z-40">
+       <header className="bg-white shadow-sm py-4 sticky top-0 z-40 border-b-4 border-teal-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex-1">
               {selectedApp && registeredUser && !simulatingFromAdmin && (
-                  <button onClick={handleBackToMenu} className="flex items-center text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+                  <button onClick={handleBackToMenu} className="flex items-center text-sm font-semibold text-gray-600 hover:text-teal-600 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                       </svg>
@@ -171,23 +248,47 @@ const App: React.FC = () => {
                   </button>
               )}
             </div>
-            <div className="flex-1 text-center">
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900">
+            <div className="flex-1 flex flex-col items-center justify-center">
+                {/* Custom CUT Logo SVG */}
+                <div className="mb-1">
+                    <svg viewBox="0 0 160 80" className="h-28 w-auto" aria-label="CUT Logo">
+                         {/* Sun Icon */}
+                         <circle cx="30" cy="40" r="14" fill="#f59e0b" />
+                         <path d="M30 18V10 M30 70V62 M8 40H0 M52 40H60 M14 24L8 18 M46 56L52 62 M14 56L8 62 M46 24L52 18" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" />
+
+                        {/* Top Arrow (Right) - Above Text */}
+                         <path d="M80 20 H 140" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" />
+                         <path d="M130 12 L 140 20 L 130 28" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+
+                         {/* Text - Centered */}
+                         <text x="110" y="55" textAnchor="middle" fill="#111827" fontSize="36" fontWeight="900" fontFamily="sans-serif" style={{letterSpacing: '4px'}}>CUT</text>
+
+                        {/* Bottom Arrow (Left) - Below Text */}
+                         <path d="M140 70 H 80" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" />
+                         <path d="M90 62 L 80 70 L 90 78" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 text-center whitespace-nowrap">
                     Portal del Empleado
                 </h1>
                 {activeUserName && (
-                  <p className="text-sm font-medium text-indigo-600 mt-1" aria-live="polite">
+                  <p className="text-xs font-medium text-teal-600 mt-0.5" aria-live="polite">
                       Usuario en línea: {activeUserName}
                   </p>
                 )}
             </div>
             <div className="flex-1 flex justify-end">
-                {showUserMenu && <UserMenu user={registeredUser} isAdmin={isAdmin} onLogout={handleLogout} isSimulating={simulatingFromAdmin} />}
+                {showUserMenu && <UserMenu user={registeredUser} isAdmin={isAdmin} onLogout={handleLogout} isSimulating={simulatingFromAdmin || !!realUser} />}
             </div>
         </div>
          {simulatingFromAdmin && registeredUser && (
             <div className="bg-yellow-400 text-yellow-900 font-bold text-center py-1 text-sm mt-2">
-                Modo Simulación: Viendo como {registeredUser.employeeName}
+                Modo Simulación Admin: Viendo como {registeredUser.employeeName}
+            </div>
+        )}
+        {realUser && !simulatingFromAdmin && registeredUser && (
+             <div className="bg-indigo-500 text-white font-bold text-center py-1 text-sm mt-2 flex justify-center items-center gap-2">
+                <span>MODO DEMO ACTIVO: Actuando como {registeredUser.employeeName}</span>
             </div>
         )}
       </header>

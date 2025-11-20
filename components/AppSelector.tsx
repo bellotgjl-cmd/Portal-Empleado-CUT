@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 
 const ConstructionIcon = () => (
@@ -13,10 +12,13 @@ const AppCard: React.FC<{
   description: string;
   onClick: () => void;
   disabled?: boolean;
-}> = ({ title, description, onClick, disabled }) => {
+  hidden?: boolean;
+}> = ({ title, description, onClick, disabled, hidden }) => {
+    if (hidden) return null;
+
     const baseClasses = "w-full p-6 rounded-xl shadow-lg text-left transition-all duration-300 transform flex flex-col justify-between h-full";
-    const enabledClasses = "bg-white hover:shadow-2xl hover:-translate-y-2 cursor-pointer";
-    const disabledClasses = "bg-gray-100 border border-gray-200 cursor-not-allowed";
+    const enabledClasses = "bg-white hover:shadow-2xl hover:-translate-y-2 cursor-pointer border-2 border-transparent hover:border-teal-500";
+    const disabledClasses = "bg-gray-100 border border-gray-200 cursor-not-allowed opacity-60";
 
     return (
         <button
@@ -31,7 +33,7 @@ const AppCard: React.FC<{
             {disabled && (
                  <div className="mt-4 flex items-center justify-end text-sm font-semibold text-yellow-800 bg-yellow-200/80 px-3 py-1 rounded-full self-end">
                     <ConstructionIcon />
-                    <span>EN CONSTRUCCIÓN</span>
+                    <span>PRÓXIMAMENTE</span>
                 </div>
             )}
         </button>
@@ -46,27 +48,40 @@ const AppSelector: React.FC<{ onSelectApp: (app: string) => void }> = ({ onSelec
                 <h2 className="text-3xl font-bold text-gray-800">Bienvenido/a</h2>
                 <p className="mt-2 text-lg text-gray-500">Selecciona la herramienta de gestión que deseas utilizar.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <AppCard 
-                    title="Cambio Vacaciones"
-                    description="Gestiona y encuentra intercambios para tus Vacaciones. (Mes o Quincenas)."
-                    onClick={() => onSelectApp('vacations')}
-                />
+            
+            {/* Centered grid for single item */}
+            <div className="flex justify-center">
+                <div className="w-full max-w-md">
+                    <AppCard 
+                        title="Cambio Vacaciones"
+                        description="Gestiona tus vacaciones oficiales. Visualiza tus asignadas vs. cambiadas y publica intercambios con seguridad."
+                        onClick={() => onSelectApp('vacations')}
+                    />
+                </div>
+            </div>
+
+            {/* Hidden apps until further notice for testing phase */}
+            <div className="hidden grid-cols-1 md:grid-cols-2 gap-8 mt-8 opacity-50">
                  <AppCard 
                     title="Cambio Descanso"
                     description="Organiza cambios en tus días de descanso con otros compañeros."
                     onClick={() => onSelectApp('rest')}
+                    disabled
+                    hidden
                 />
                  <AppCard 
                     title="Cambio Servicio"
                     description="Solicita o acepta cambios de turno o servicio."
                     onClick={() => onSelectApp('shift')}
                     disabled
+                    hidden
                 />
                  <AppCard 
                     title="Tablón Anuncios"
                     description="Publica y consulta anuncios de interés general para el personal."
                     onClick={() => onSelectApp('board')}
+                    disabled
+                    hidden
                 />
             </div>
         </div>

@@ -1,12 +1,13 @@
 
 import * as React from 'react';
-import type { FortnightId, SwapRequest } from '../types';
+import type { FortnightId, SwapRequest, RegisteredUser } from '../types';
 import FortnightSelector from './FortnightSelector';
 import SwapList from './SwapList';
 
 interface QuickMatchFinderProps {
   allRequests: SwapRequest[];
   currentUserType: 'Conductor' | 'Taller';
+  onSimulateUser?: (user: RegisteredUser) => void;
 }
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -17,7 +18,7 @@ const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, c
 );
 
 
-const QuickMatchFinder: React.FC<QuickMatchFinderProps> = ({ allRequests, currentUserType }) => {
+const QuickMatchFinder: React.FC<QuickMatchFinderProps> = ({ allRequests, currentUserType, onSimulateUser }) => {
   const [have, setHave] = React.useState<FortnightId[]>([]);
   const [want, setWant] = React.useState<FortnightId[]>([]);
   const [results, setResults] = React.useState<SwapRequest[] | null>(null);
@@ -92,7 +93,7 @@ const QuickMatchFinder: React.FC<QuickMatchFinderProps> = ({ allRequests, curren
         <div className="border-t pt-6 mt-6">
           <h4 className="text-lg font-bold text-gray-800 mb-4">Resultados de la búsqueda ({results.length})</h4>
           {results.length > 0 ? (
-            <SwapList requests={results} />
+            <SwapList requests={results} onSimulateUser={onSimulateUser} />
           ) : (
             <p className="text-gray-500 text-center bg-gray-50 p-4 rounded-lg">No se encontraron coincidencias directas para esta combinación.</p>
           )}

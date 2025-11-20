@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { RestSwapRequest } from '../types';
 import { MONTHS } from '../constants';
@@ -83,9 +84,9 @@ const VacationCalendarView: React.FC<RestAvailabilityCalendarProps> = ({ request
           return (
             <div
               key={day}
-              className={`border rounded-lg p-2 min-h-[120px] flex flex-col ${isToday ? 'bg-indigo-50 border-indigo-300' : 'bg-white'}`}
+              className={`border rounded-lg p-2 min-h-[120px] flex flex-col ${isToday ? 'bg-teal-50 border-teal-300' : 'bg-white'}`}
             >
-              <span className={`font-bold ${isToday ? 'text-indigo-600' : 'text-gray-700'}`}>{day}</span>
+              <span className={`font-bold ${isToday ? 'text-teal-600' : 'text-gray-700'}`}>{day}</span>
               <div className="mt-1 space-y-1 overflow-y-auto">
                  {/* FIX: Explicitly type 'req' as RestSwapRequest to resolve type inference issues. */}
                  {uniqueDayRequests.map((req: RestSwapRequest, index) => (

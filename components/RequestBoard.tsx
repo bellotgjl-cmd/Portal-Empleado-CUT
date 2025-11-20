@@ -104,7 +104,7 @@ const RequestBoard: React.FC<RequestBoardProps> = ({ requests, onManageSwap, cur
                  <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                         onClick={() => onManageSwap(req)}
-                        className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition-colors text-sm"
+                        className="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors text-sm"
                     >
                         Gestionar Cambio
                     </button>

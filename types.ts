@@ -1,3 +1,4 @@
+
 export type FortnightId = string;
 
 export interface Administrator {
@@ -41,9 +42,9 @@ export interface Transaction {
   receiverGives: FortnightId[]; // What the receiver offers (what the initiator gets)
   timestamp: number;   // When the selection was made
   status: TransactionStatus;
+  formalized?: boolean; // New field to track if the paperwork/final check is done
 }
 
-// FIX: Added missing type definitions for other app features.
 export interface RestSwapRequest {
   id: string;
   employeeId: string;
@@ -91,4 +92,8 @@ export interface Announcement {
   renewalCount?: number;
 }
 
-export type RegisteredUser = Omit<SwapRequest, 'id' | 'has' | 'wants' | 'status' | 'blockReason'>;
+// FIX: Added initialAssignment to track what the company originally gave the employee
+export interface RegisteredUser extends Omit<SwapRequest, 'id' | 'has' | 'wants' | 'status' | 'blockReason'> {
+    initialAssignment: FortnightId[];
+    password?: string; // Added password field (optional for legacy data compatibility, mandatory for new)
+}
