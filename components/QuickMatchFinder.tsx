@@ -90,13 +90,41 @@ const QuickMatchFinder: React.FC<QuickMatchFinderProps> = ({ allRequests, curren
 
 
       {searched && results !== null && (
-        <div className="border-t pt-6 mt-6">
-          <h4 className="text-lg font-bold text-gray-800 mb-4">Resultados de la búsqueda ({results.length})</h4>
-          {results.length > 0 ? (
-            <SwapList requests={results} onSimulateUser={onSimulateUser} />
-          ) : (
-            <p className="text-gray-500 text-center bg-gray-50 p-4 rounded-lg">No se encontraron coincidencias directas para esta combinación.</p>
-          )}
+        <div className="mt-8 animate-pulse-strong">
+            {results.length > 0 ? (
+                <div className="bg-green-50 border-2 border-green-500 p-6 rounded-xl shadow-xl relative overflow-hidden">
+                    {/* Decorative background glow */}
+                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-green-300 rounded-full opacity-20 blur-2xl pointer-events-none"></div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 relative z-10 border-b border-green-200 pb-4">
+                         <div className="bg-green-100 p-3 rounded-full border-2 border-green-400 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-700" fill="none" viewBox="0 0 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                         </div>
+                         <div className="text-center sm:text-left">
+                            <h4 className="text-2xl font-extrabold text-green-800">¡Bingo! {results.length} Coincidencia{results.length !== 1 ? 's' : ''} Encontrada{results.length !== 1 ? 's' : ''}</h4>
+                            <p className="text-green-700 font-medium mt-1">
+                                Estos compañeros tienen exactamente lo que buscas y quieren lo que tú ofreces.
+                            </p>
+                         </div>
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-green-200 shadow-inner">
+                        <SwapList requests={results} onSimulateUser={onSimulateUser} />
+                    </div>
+                </div>
+            ) : (
+                 <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl text-center">
+                     <div className="mx-auto h-12 w-12 text-gray-300 mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                     </div>
+                    <h4 className="text-lg font-bold text-gray-600">Sin coincidencias directas</h4>
+                    <p className="text-gray-500">Nadie cumple con tus criterios exactos en este momento. Prueba a ampliar lo que buscas.</p>
+                </div>
+            )}
         </div>
       )}
     </div>
