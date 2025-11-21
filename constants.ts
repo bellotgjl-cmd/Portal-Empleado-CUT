@@ -35,6 +35,21 @@ export const getMonthFromId = (id: string): string => {
     return month || 'Desconocido';
 };
 
+// Helper to expand a potentially mixed list of IDs (some regular, some 'full-month') into purely regular IDs
+export function expandFortnightIds(ids: string[]): string[] {
+    const expanded: string[] = [];
+    ids.forEach(id => {
+        if (isFullMonthId(id)) {
+            const month = getMonthFromId(id);
+            expanded.push(`${month.toLowerCase()}-1`);
+            expanded.push(`${month.toLowerCase()}-2`);
+        } else {
+            expanded.push(id);
+        }
+    });
+    return expanded;
+}
+
 
 export function getFortnightLabel(id: string): string {
     if (isFullMonthId(id)) {
@@ -45,9 +60,78 @@ export function getFortnightLabel(id: string): string {
     return fortnight ? `${fortnight.label.replace(fortnight.month, 'de ' + fortnight.month)}` : 'Desconocido';
 }
 
+export function getAbbreviatedFortnightLabel(id: string): string {
+    if (isFullMonthId(id)) {
+        const month = getMonthFromId(id);
+        return `${month} (Mes)`;
+    }
+    const fortnight = FORTNIGHTS.find(f => f.id === id);
+    if (!fortnight) return 'Desc.';
+    
+    const monthName = fortnight.month;
+    
+    // Special case for Septiembre as requested
+    if (monthName.toLowerCase() === 'septiembre') {
+         return id.endsWith('-1') ? '1ª Sept.' : '2ª Sept.';
+    }
+    
+    let shortMonth = monthName;
+    // Abbreviate if longer than 4 chars (e.g. Enero -> Ene., Mayo stays Mayo)
+    if (monthName.length > 4) {
+        shortMonth = monthName.substring(0, 3) + '.';
+    }
+    
+    const part = id.endsWith('-1') ? '1ª' : '2ª';
+    return `${part} ${shortMonth}`;
+}
+
+export function groupFortnights(ids: string[]) {
+    const sortedIds = [...ids].sort((a, b) => {
+        const getMonthIndex = (id: string) => {
+            const monthPart = id.split('-')[0];
+            return MONTHS.findIndex(m => m.toLowerCase() === monthPart);
+        };
+        const monthA = getMonthIndex(a);
+        const monthB = getMonthIndex(b);
+        return monthA !== monthB ? monthA - monthB : a.localeCompare(b);
+    });
+
+    const idsByMonth: Record<string, string[]> = {};
+    sortedIds.forEach(id => {
+        const month = id.split('-')[0];
+        if (!idsByMonth[month]) idsByMonth[month] = [];
+        idsByMonth[month].push(id);
+    });
+
+    const fullMonths: string[][] = [];
+    const singles: string[] = [];
+
+    MONTHS.forEach(m => {
+        const mKey = m.toLowerCase();
+        if (idsByMonth[mKey]) {
+            // If it explicitly contains the 'full' ID, treat it as a single unit in the singles list (or handle differently if needed)
+            // But for "Current Holdings" logic where we have [m-1, m-2], we group them.
+            const hasFullId = idsByMonth[mKey].some(id => isFullMonthId(id));
+            
+            if (hasFullId) {
+                singles.push(...idsByMonth[mKey]);
+            } else if (idsByMonth[mKey].length === 2) {
+                fullMonths.push(idsByMonth[mKey]);
+            } else {
+                singles.push(...idsByMonth[mKey]);
+            }
+        }
+    });
+
+    return { fullMonths, singles };
+}
+
 // --- TEST DATA (DEMO USERS) ---
-// Updated to reflect request: Have 'agosto-2', Want 'enero-1'
-// Counterparts created to ensure matches exist.
+// Updated Requirement: EVERYONE must have exactly 3 Fortnights assigned (Has).
+// But they can have UNLIMITED Wants.
+// Juan has: Agosto-2, Septiembre-1, Septiembre-2 (3 total). Wants: Enero-1, Enero-2, Febrero-1, Febrero-2, Marzo-1 (5 total)
+// Ana has: Enero-1, Enero-2, Febrero-1 (3 total). Wants: Agosto-2, Septiembre-1, Septiembre-2, Octubre-1 (4 total)
+
 export const DEMO_USERS = [
     {
         employeeId: '1001',
@@ -56,9 +140,9 @@ export const DEMO_USERS = [
         email: 'juan.demo@portal.com',
         whatsapp: '600111222',
         password: '123',
-        initialAssignment: ['agosto-2'],
-        has: ['agosto-2'],
-        wants: ['enero-1'],
+        initialAssignment: ['agosto-2', 'septiembre-1', 'septiembre-2'],
+        has: ['agosto-2', 'septiembre-1', 'septiembre-2'],
+        wants: ['enero-1', 'enero-2', 'febrero-1', 'febrero-2', 'marzo-1'],
         status: 'active',
         id: '1001'
     },
@@ -69,9 +153,9 @@ export const DEMO_USERS = [
         email: 'ana.demo@portal.com',
         whatsapp: '600333444',
         password: '123',
-        initialAssignment: ['enero-1'],
-        has: ['enero-1'],
-        wants: ['agosto-2'],
+        initialAssignment: ['enero-1', 'enero-2', 'febrero-1'],
+        has: ['enero-1', 'enero-2', 'febrero-1'],
+        wants: ['agosto-2', 'septiembre-1', 'septiembre-2', 'octubre-1'],
         status: 'active',
         id: '1002'
     },
@@ -82,9 +166,9 @@ export const DEMO_USERS = [
         email: 'pedro.demo@portal.com',
         whatsapp: '600555666',
         password: '123',
-        initialAssignment: ['agosto-2'],
-        has: ['agosto-2'],
-        wants: ['enero-1'],
+        initialAssignment: ['julio-1', 'julio-2', 'agosto-1'],
+        has: ['julio-1', 'julio-2', 'agosto-1'],
+        wants: ['diciembre-1', 'diciembre-2', 'enero-1', 'enero-2'],
         status: 'active',
         id: '1003'
     },
@@ -95,9 +179,9 @@ export const DEMO_USERS = [
         email: 'laura.demo@portal.com',
         whatsapp: '600777888',
         password: '123',
-        initialAssignment: ['enero-1'],
-        has: ['enero-1'],
-        wants: ['agosto-2'],
+        initialAssignment: ['diciembre-1', 'diciembre-2', 'enero-1'],
+        has: ['diciembre-1', 'diciembre-2', 'enero-1'],
+        wants: ['julio-1', 'julio-2', 'agosto-1', 'agosto-2', 'septiembre-1'],
         status: 'active',
         id: '1004'
     },
@@ -108,9 +192,9 @@ export const DEMO_USERS = [
         email: 'carlos.demo@portal.com',
         whatsapp: '600999000',
         password: '123',
-        initialAssignment: ['agosto-2'],
-        has: ['agosto-2'],
-        wants: ['enero-1'],
+        initialAssignment: ['marzo-1', 'marzo-2', 'abril-1'],
+        has: ['marzo-1', 'marzo-2', 'abril-1'],
+        wants: ['agosto-1', 'agosto-2', 'septiembre-1', 'septiembre-2'],
         status: 'active',
         id: '1005'
     },
@@ -121,9 +205,9 @@ export const DEMO_USERS = [
         email: 'maria.demo@portal.com',
         whatsapp: '600123123',
         password: '123',
-        initialAssignment: ['enero-1'],
-        has: ['enero-1'],
-        wants: ['agosto-2'],
+        initialAssignment: ['agosto-1', 'agosto-2', 'septiembre-1'],
+        has: ['agosto-1', 'agosto-2', 'septiembre-1'],
+        wants: ['marzo-1', 'marzo-2', 'abril-1'],
         status: 'active',
         id: '1006'
     },
@@ -135,51 +219,25 @@ export const DEMO_USERS = [
         email: 'antonio.demo@portal.com',
         whatsapp: '600111223',
         password: '123',
-        initialAssignment: ['agosto-2'],
-        has: ['agosto-2'],
-        wants: ['enero-1'],
+        initialAssignment: ['noviembre-1', 'noviembre-2', 'diciembre-1'],
+        has: ['noviembre-1', 'noviembre-2', 'diciembre-1'],
+        wants: ['mayo-1', 'mayo-2', 'junio-1', 'junio-2', 'julio-1'],
         status: 'active',
         id: '1007'
     },
     {
         employeeId: '1008',
-        employeeName: 'Beatriz Diciembre (Match)',
+        employeeName: 'Beatriz Mayo (Match)',
         employeeType: 'Conductor',
         email: 'beatriz.demo@portal.com',
         whatsapp: '600111224',
         password: '123',
-        initialAssignment: ['enero-1'],
-        has: ['enero-1'],
-        wants: ['agosto-2'],
+        initialAssignment: ['mayo-1', 'mayo-2', 'junio-1'],
+        has: ['mayo-1', 'mayo-2', 'junio-1'],
+        wants: ['noviembre-1', 'noviembre-2', 'diciembre-1'],
         status: 'active',
         id: '1008'
     },
-    {
-        employeeId: '1009',
-        employeeName: 'Luis Abril (Demo)',
-        employeeType: 'Conductor',
-        email: 'luis.demo@portal.com',
-        whatsapp: '600111225',
-        password: '123',
-        initialAssignment: ['agosto-2'],
-        has: ['agosto-2'],
-        wants: ['enero-1'],
-        status: 'active',
-        id: '1009'
-    },
-    {
-        employeeId: '1010',
-        employeeName: 'Elena Mayo (Match)',
-        employeeType: 'Conductor',
-        email: 'elena.demo@portal.com',
-        whatsapp: '600111226',
-        password: '123',
-        initialAssignment: ['enero-1'],
-        has: ['enero-1'],
-        wants: ['agosto-2'],
-        status: 'active',
-        id: '1010'
-    }
 ];
 
 // --- INITIAL STATE DATA ---

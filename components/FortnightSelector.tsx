@@ -5,12 +5,14 @@ import type { FortnightId } from '../types';
 
 interface FortnightSelectorProps {
   selected: FortnightId[];
-  onToggle: (id: FortnightId) => void;
+  onToggle: (id: FortnightId | FortnightId[]) => void;
   limit?: number;
   disabledIds?: FortnightId[];
+  forceSplitSelection?: boolean; // NEW: If true, "Full Month" selects 1st and 2nd fortnight separately, never the 'month-full' ID.
 }
 
-const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggle, limit, disabledIds = [] }) => {
+const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggle, limit, disabledIds = [], forceSplitSelection = false }) => {
+  
   const handleToggle = (id: FortnightId) => {
     const isSelected = selected.includes(id);
     if (!isSelected && limit && selected.length >= limit) {
@@ -21,13 +23,40 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
 
   const handleMonthToggle = (month: string) => {
     const fullMonthId = getFullMonthId(month);
+    const monthFortnights = FORTNIGHTS.filter(f => f.month === month).map(f => f.id);
+
+    // --- LOGIC A: SPLIT SELECTION (For Initial Assignment) ---
+    if (forceSplitSelection) {
+        // Check how many of the individual fortnights are currently selected
+        const selectedInMonth = monthFortnights.filter(id => selected.includes(id));
+        const allSelected = selectedInMonth.length === monthFortnights.length;
+
+        if (allSelected) {
+            // If all are selected, we want to DESELECT all of them
+            // Pass the array of IDs to toggle (which will remove them)
+            onToggle(monthFortnights);
+        } else {
+            // If some or none are selected, we want to SELECT the missing ones
+            const missing = monthFortnights.filter(id => !selected.includes(id));
+            
+            // Check limits
+            if (limit !== undefined && (selected.length + missing.length > limit)) {
+                return; // Cannot select all because of limit
+            }
+            
+            // Toggle only the missing ones to add them
+            onToggle(missing);
+        }
+        return;
+    }
+
+    // --- LOGIC B: STANDARD SELECTION (For Wants/Requests) ---
     const isFullMonthSelected = selected.includes(fullMonthId);
 
     if (isFullMonthSelected) {
       onToggle(fullMonthId); // Just deselect it
     } else {
       // We want to select it
-      const monthFortnights = FORTNIGHTS.filter(f => f.month === month).map(f => f.id);
       const selectedInMonth = monthFortnights.filter(id => selected.includes(id));
 
       // Check limit: we are removing N items and adding 1. Net change is 1 - N.
@@ -37,13 +66,11 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
       }
 
       // Deselect individual fortnights for this month that are currently selected
-      selectedInMonth.forEach(id => {
-          if (selected.includes(id)) {
-              onToggle(id);
-          }
-      });
-      // Select the full month
-      onToggle(fullMonthId);
+      // We can do this by passing them to onToggle (which toggles them off)
+      // Then toggle the full month on.
+      // We bundle this:
+      const idsToToggle = [...selectedInMonth, fullMonthId];
+      onToggle(idsToToggle);
     }
   };
 
@@ -51,22 +78,44 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
     <div className="space-y-4">
       {MONTHS.map(month => {
         const fullMonthId = getFullMonthId(month);
-        const isFullMonthSelected = selected.includes(fullMonthId);
-
-        const monthFortnights = FORTNIGHTS.filter(f => f.month === month);
         
+        const monthFortnights = FORTNIGHTS.filter(f => f.month === month);
         const selectedFortnightsInMonthCount = monthFortnights.filter(f => selected.includes(f.id)).length;
         
+        // Determine if "Full Month" box should be checked
+        // In Split Mode: Checked if ALL individual fortnights are checked.
+        // In Standard Mode: Checked if the specific fullMonthId is checked.
+        const isFullMonthChecked = forceSplitSelection 
+            ? selectedFortnightsInMonthCount === monthFortnights.length
+            : selected.includes(fullMonthId);
+
         // Disable month toggle if:
         // 1. Limit is reached (and not already selected)
-        // 2. OR the full month itself is in disabledIds
-        // 3. OR ANY of the individual fortnights are disabled (e.g. because user has them)
-        const isMonthToggleDisabled = (!isFullMonthSelected && limit !== undefined && (selected.length - selectedFortnightsInMonthCount + 1 > limit)) 
-                                      || disabledIds.includes(fullMonthId)
-                                      || monthFortnights.some(f => disabledIds.includes(f.id));
+        // 2. OR the full month itself is in disabledIds (Standard Mode)
+        // 3. OR ANY of the individual fortnights are disabled (Split Mode - strict)
+        // 4. OR if in Standard mode, individual fortnights are disabled (complex check)
         
-        // Create a unique identifier for the checkbox to avoid duplicate IDs in the DOM
-        const uniqueId = `month-toggle-${month.toLowerCase()}-${limit !== undefined ? limit : 'none'}`;
+        let isMonthToggleDisabled = false;
+        if (forceSplitSelection) {
+             const missingCount = monthFortnights.length - selectedFortnightsInMonthCount;
+             // If not fully selected, check if we have room to add the missing ones
+             if (!isFullMonthChecked && limit !== undefined && (selected.length + missingCount > limit)) {
+                 isMonthToggleDisabled = true;
+             }
+             // If any individual fortnight is disabled, we can't bulk select cleanly
+             if (monthFortnights.some(f => disabledIds.includes(f.id))) {
+                 isMonthToggleDisabled = true;
+             }
+        } else {
+             if (!isFullMonthChecked && limit !== undefined && (selected.length - selectedFortnightsInMonthCount + 1 > limit)) {
+                 isMonthToggleDisabled = true;
+             }
+             if (disabledIds.includes(fullMonthId)) {
+                 isMonthToggleDisabled = true;
+             }
+        }
+        
+        const uniqueId = `month-toggle-${month.toLowerCase()}-${limit !== undefined ? limit : 'none'}-${forceSplitSelection ? 'split' : 'std'}`;
 
         return (
           <div key={month}>
@@ -82,7 +131,7 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
                 <input
                   type="checkbox"
                   id={uniqueId}
-                  checked={isFullMonthSelected}
+                  checked={isFullMonthChecked}
                   onChange={() => handleMonthToggle(month)}
                   disabled={isMonthToggleDisabled}
                   className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-200"
@@ -94,16 +143,22 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
             <div className="grid grid-cols-2 gap-2">
               {monthFortnights.map(fortnight => {
                 const isSelected = selected.includes(fortnight.id);
-                // Disable individual fortnights if:
-                // 1. Full month is selected
-                // 2. Limit reached
-                // 3. ID is in disabledIds
-                // 4. Parent full month is in disabledIds
-                const isDisabled = isFullMonthSelected 
-                                   || (!isSelected && limit !== undefined && selected.length >= limit) 
-                                   || disabledIds.includes(fortnight.id)
-                                   || disabledIds.includes(fullMonthId);
                 
+                let isDisabled = disabledIds.includes(fortnight.id);
+                
+                // In Standard Mode, disable individual if Full Month ID is selected
+                if (!forceSplitSelection && selected.includes(fullMonthId)) {
+                    isDisabled = true;
+                }
+                // Limit check
+                if (!isSelected && limit !== undefined && selected.length >= limit) {
+                    isDisabled = true;
+                }
+                
+                if (!forceSplitSelection && disabledIds.includes(fullMonthId)) {
+                    isDisabled = true;
+                }
+
                 const buttonClass = isSelected
                   ? 'bg-teal-600 text-white shadow-md'
                   : isDisabled

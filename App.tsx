@@ -236,62 +236,68 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-       <header className="bg-white shadow-sm py-4 sticky top-0 z-40 border-b-4 border-teal-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-            <div className="flex-1">
+       {/* Reverted Header: Stacked Layout, Taller Height */}
+       <header className="bg-white shadow-sm sticky top-0 z-40 border-b-4 border-teal-600 h-[116px]">
+        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div className="flex-1 flex items-center justify-start">
               {selectedApp && registeredUser && !simulatingFromAdmin && (
                   <button onClick={handleBackToMenu} className="flex items-center text-sm font-semibold text-gray-600 hover:text-teal-600 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                       </svg>
-                      Volver al Menú
+                      <span className="hidden sm:inline">Volver</span>
                   </button>
               )}
             </div>
+            
+            {/* Stacked Header Content */}
             <div className="flex-1 flex flex-col items-center justify-center">
-                {/* Custom CUT Logo SVG */}
-                <div className="mb-1">
-                    <svg viewBox="0 0 160 80" className="h-28 w-auto" aria-label="CUT Logo">
+                {/* Custom CUT Logo SVG - Restored Size */}
+                <div className="flex-shrink-0 mb-1">
+                    <svg viewBox="0 0 160 80" className="h-12 sm:h-14 w-auto" aria-label="CUT Logo">
                          {/* Sun Icon */}
                          <circle cx="30" cy="40" r="14" fill="#f59e0b" />
                          <path d="M30 18V10 M30 70V62 M8 40H0 M52 40H60 M14 24L8 18 M46 56L52 62 M14 56L8 62 M46 24L52 18" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" />
-
-                        {/* Top Arrow (Right) - Above Text */}
+                        {/* Top Arrow (Right) */}
                          <path d="M80 20 H 140" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" />
                          <path d="M130 12 L 140 20 L 130 28" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-
-                         {/* Text - Centered */}
+                         {/* Text */}
                          <text x="110" y="55" textAnchor="middle" fill="#111827" fontSize="36" fontWeight="900" fontFamily="sans-serif" style={{letterSpacing: '4px'}}>CUT</text>
-
-                        {/* Bottom Arrow (Left) - Below Text */}
+                        {/* Bottom Arrow (Left) */}
                          <path d="M140 70 H 80" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" />
                          <path d="M90 62 L 80 70 L 90 78" fill="none" stroke="#0d9488" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 text-center whitespace-nowrap">
-                    Portal del Empleado
-                </h1>
-                {activeUserName && (
-                  <p className="text-xs font-medium text-teal-600 mt-0.5" aria-live="polite">
-                      Usuario en línea: {activeUserName}
-                  </p>
-                )}
+                
+                <div className="flex flex-col items-center justify-center">
+                    <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-none whitespace-nowrap">
+                        Portal del Empleado
+                    </h1>
+                    {activeUserName && (
+                      <p className="text-[10px] sm:text-xs font-bold text-teal-600 mt-0.5 truncate max-w-[150px]" aria-live="polite">
+                          {activeUserName}
+                      </p>
+                    )}
+                </div>
             </div>
+
             <div className="flex-1 flex justify-end">
                 {showUserMenu && <UserMenu user={registeredUser} isAdmin={isAdmin} onLogout={handleLogout} isSimulating={simulatingFromAdmin || !!realUser} />}
             </div>
         </div>
-         {simulatingFromAdmin && registeredUser && (
-            <div className="bg-yellow-400 text-yellow-900 font-bold text-center py-1 text-sm mt-2">
-                Modo Simulación Admin: Viendo como {registeredUser.employeeName}
-            </div>
-        )}
-        {realUser && !simulatingFromAdmin && registeredUser && (
-             <div className="bg-indigo-500 text-white font-bold text-center py-1 text-sm mt-2 flex justify-center items-center gap-2">
-                <span>MODO DEMO ACTIVO: Actuando como {registeredUser.employeeName}</span>
-            </div>
-        )}
       </header>
+      
+      {/* Status Banners */}
+      {simulatingFromAdmin && registeredUser && (
+          <div className="bg-yellow-400 text-yellow-900 font-bold text-center py-1 text-sm">
+              Modo Simulación Admin: Viendo como {registeredUser.employeeName}
+          </div>
+      )}
+      {realUser && !simulatingFromAdmin && registeredUser && (
+            <div className="bg-indigo-500 text-white font-bold text-center py-1 text-sm flex justify-center items-center gap-2">
+              <span>MODO DEMO ACTIVO: Actuando como {registeredUser.employeeName}</span>
+          </div>
+      )}
       
       <main className="p-4 sm:p-6 lg:p-8">
         {renderContent()}

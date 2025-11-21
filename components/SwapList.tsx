@@ -2,7 +2,7 @@
 import * as React from 'react';
 import type { SwapRequest } from '../types';
 import type { RegisteredUser } from '../types';
-import { getFortnightLabel, DEMO_USERS } from '../constants';
+import { getFortnightLabel, DEMO_USERS, groupFortnights } from '../constants';
 
 interface SwapListProps {
   requests: SwapRequest[];
@@ -118,8 +118,27 @@ const SwapList: React.FC<SwapListProps> = ({ requests, currentUserRequestId, onS
             <div className="mt-4 space-y-3">
                 <div>
                 <p className="text-sm font-semibold text-green-700 mb-2">Tiene disponible:</p>
-                <div className="flex flex-wrap gap-2">
-                    {req.has.map(id => <FortnightPill key={id} id={id} color="bg-green-500" />)}
+                <div className="space-y-2">
+                     {(() => {
+                        const { fullMonths, singles } = groupFortnights(req.has);
+                        return (
+                            <>
+                                {fullMonths.map((group, i) => (
+                                    <div key={i} className="flex items-center bg-green-50 px-2 py-1 rounded border border-green-100">
+                                        <span className="text-xs font-bold text-green-800 mr-2 capitalize">{group[0].split('-')[0]}:</span>
+                                        <div className="flex gap-2">
+                                            {group.map(id => <FortnightPill key={id} id={id} color="bg-green-500" />)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {singles.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {singles.map(id => <FortnightPill key={id} id={id} color="bg-green-500" />)}
+                                    </div>
+                                )}
+                            </>
+                        )
+                    })()}
                 </div>
                 </div>
                 <div>

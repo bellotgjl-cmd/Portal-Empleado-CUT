@@ -8,7 +8,7 @@ import TransactionHistory from './TransactionHistory';
 import SuccessStories from './SuccessStories';
 import FortnightSelector from './FortnightSelector';
 import type { SwapRequest, Match, Transaction, TransactionStatus, TradeProposal, RegisteredUser, FortnightId } from '../types';
-import { getFortnightLabel, initialRequests, MONTHS } from '../constants';
+import { getFortnightLabel, getAbbreviatedFortnightLabel, initialRequests, MONTHS, expandFortnightIds } from '../constants';
 
 // --- LocalStorage Keys ---
 const REAL_LS_KEYS = {
@@ -58,12 +58,19 @@ function calculateCurrentHoldings(user: RegisteredUser, transactions: Transactio
     relevantTransactions.forEach(t => {
         if (t.initiatorId === user.employeeId) {
             // I initiated. I gave 'initiatorGives', got 'receiverGives'
-            holdings = holdings.filter(h => !t.initiatorGives.includes(h)); // Remove what I gave
-            holdings.push(...t.receiverGives); // Add what I got
+            // IMPORTANT: If I gave a FULL MONTH ID, I need to remove the PARTIAL IDs from my holdings
+            const expandedGives = expandFortnightIds(t.initiatorGives);
+            const expandedGets = expandFortnightIds(t.receiverGives);
+            
+            holdings = holdings.filter(h => !expandedGives.includes(h)); // Remove what I gave
+            holdings.push(...expandedGets); // Add what I got
         } else {
             // I received. I gave 'receiverGives', got 'initiatorGives'
-            holdings = holdings.filter(h => !t.receiverGives.includes(h)); // Remove what I gave
-            holdings.push(...t.initiatorGives); // Add what I got
+            const expandedGives = expandFortnightIds(t.receiverGives);
+            const expandedGets = expandFortnightIds(t.initiatorGives);
+
+            holdings = holdings.filter(h => !expandedGives.includes(h)); // Remove what I gave
+            holdings.push(...expandedGets); // Add what I got
         }
     });
 
@@ -97,6 +104,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
 
   // --- SETUP STATE ---
   const [isSetupMode, setIsSetupMode] = React.useState(false);
+  const [isEditingAssignment, setIsEditingAssignment] = React.useState(false); // NEW: Track if we are editing
   const [setupAssignment, setSetupAssignment] = React.useState<FortnightId[]>([]);
   const [setupError, setSetupError] = React.useState<string | null>(null);
 
@@ -137,7 +145,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
   const [lastSeenMatchCount, setLastSeenMatchCount] = React.useState(0);
   const [newMatchesCount, setNewMatchesCount] = React.useState(0);
   const [lastTransactionStatus, setLastTransactionStatus] = React.useState<{id: string, status: TransactionStatus} | null>(null);
-  const [loginNotification, setLoginNotification] = React.useState<string | null>(null);
+  const [priorityAlert, setPriorityAlert] = React.useState<{type: 'urgent' | 'info' | 'success', message: string} | null>(null);
   const [view, setView] = React.useState<'dashboard' | 'explore' | 'success'>('dashboard');
   const [highlightedTransactionId, setHighlightedTransactionId] = React.useState<string | null>(null);
   const [scrollToSection, setScrollToSection] = React.useState<string | null>(null);
@@ -160,12 +168,14 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
 
   // --- CHECK ASSIGNMENT ON MOUNT ---
   React.useEffect(() => {
+      // If no assignment exists, force setup.
+      // If assignment exists, ONLY enter setup if we are explicitly in edit mode.
       if (!effectiveUser.initialAssignment || effectiveUser.initialAssignment.length === 0) {
           setIsSetupMode(true);
-      } else {
+      } else if (!isEditingAssignment) {
           setIsSetupMode(false);
       }
-  }, [effectiveUser]);
+  }, [effectiveUser, isEditingAssignment]);
 
 
   // --- Calculated States ---
@@ -181,13 +191,39 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
     localStorage.setItem(LS_KEYS.TRANSACTIONS, JSON.stringify(transactions));
   }, [transactions, LS_KEYS.TRANSACTIONS]);
 
+  const activeTransaction = React.useMemo(() => {
+    if (!currentUserRequest) return null;
+    return transactions.find(t => 
+        (t.initiatorId === currentUserRequest.id || t.receiverId === currentUserRequest.id) && 
+        t.status === 'pending'
+    ) || null;
+  }, [transactions, currentUserRequest]);
+
+  const matches = React.useMemo(() => {
+    if (!currentUserRequest) return [];
+    const foundMatches = findMatches(currentUserRequest, swapRequests);
+    return foundMatches.sort((a, b) => 
+      new Date(a.otherPerson.id).getTime() - new Date(b.otherPerson.id).getTime()
+    );
+  }, [currentUserRequest, swapRequests]);
+
 
   React.useEffect(() => {
     const existingRequest = swapRequests.find(req => req.employeeId === effectiveUser.employeeId);
     if (existingRequest) {
-        const stillOwnsAll = existingRequest.has.every(h => currentHoldings.includes(h));
+        // Check if they still own what they offered
+        // If they offered a FULL MONTH, we need to check if they own BOTH PARTS
+        const expandedHas = expandFortnightIds(existingRequest.has);
+        const stillOwnsAll = expandedHas.every(h => currentHoldings.includes(h));
+
         if (!stillOwnsAll) {
-            const validHas = existingRequest.has.filter(h => currentHoldings.includes(h));
+            // Filter out INVALID offers
+            // If 'aug-full' was offered, but I lost 'aug-1', I lose 'aug-full'.
+            const validHas = existingRequest.has.filter(h => {
+                const parts = expandFortnightIds([h]);
+                return parts.every(p => currentHoldings.includes(p));
+            });
+
             const updatedRequest = { ...existingRequest, has: validHas };
             
             if (validHas.length === 0) {
@@ -204,7 +240,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
         setCurrentUserRequest(null);
     }
     
-    setLoginNotification(null);
+    setPriorityAlert(null);
     setLastTransactionStatus(null);
 
   }, [effectiveUser, swapRequests, currentHoldings]);
@@ -217,6 +253,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
 
   React.useEffect(() => {
     if (scrollToSection) {
+        // Small delay to ensure DOM render
         setTimeout(() => {
             const element = document.getElementById(scrollToSection);
             if (element) {
@@ -225,57 +262,111 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
                 setTimeout(() => element.classList.remove('animate-pulse-strong'), 3000);
             }
             setScrollToSection(null);
-        }, 100);
+        }, 300);
     }
   }, [scrollToSection]);
 
 
+  // --- NOTIFICATION AND SCROLL PRIORITY LOGIC ---
   React.useEffect(() => {
     if (currentUserRequest) {
+      // 1. HIGHEST PRIORITY: Pending Incoming Proposal
+      // Use the memoized activeTransaction to avoid finding it again if possible, 
+      // but specifically check if WE are the receiver for the alert.
       const incomingProposal = transactions.find(t =>
           t.receiverId === currentUserRequest.id && t.status === 'pending'
       );
 
       if (incomingProposal) {
         const initiator = allUsers.find(u => u.id === incomingProposal.initiatorId);
-        setLoginNotification(`¡Atención! ${initiator?.employeeName || 'Un compañero'} te ha enviado una propuesta. Revisa tus coincidencias.`);
+        setPriorityAlert({ 
+            type: 'urgent', 
+            message: `¡ACCIÓN REQUERIDA! ${initiator?.employeeName || 'Un compañero'} te ha enviado una propuesta. Debes ACEPTAR o RECHAZAR para continuar.`
+        });
         setView('dashboard');
+        // Scroll to specific card
         setScrollToSection(`match-card-${incomingProposal.initiatorId}`);
-      } else {
-        const notificationKey = `${LS_KEYS.NOTIFICATION_PREFIX}${currentUserRequest.id}`;
-        try {
+        return;
+      } 
+      
+      // 2. MEDIUM PRIORITY: Transaction Status Updates (Notifications)
+      const notificationKey = `${LS_KEYS.NOTIFICATION_PREFIX}${currentUserRequest.id}`;
+      try {
             const storedNotification = localStorage.getItem(notificationKey);
             if (storedNotification) {
                 const { id, status } = JSON.parse(storedNotification);
                 setLastTransactionStatus({ id, status });
                 localStorage.removeItem(notificationKey);
+                // No scroll needed, just the alert
             }
-        } catch (e) {
+      } catch (e) {
             console.error('Error processing notification:', e);
             localStorage.removeItem(notificationKey);
-        }
       }
+
+      // 3. LOW PRIORITY (BUT IMPORTANT): New Matches or Existing Matches on Load
+      // Logic: 
+      // - If we have matches, scroll to them.
+      // - If we DO NOT have matches and NO active transaction, show a "Clean State" message at the top.
+      
+      if (!activeTransaction) {
+          if (matches.length > 0) {
+              // Check if we are entering the dashboard (no last transaction status displayed just now)
+              // This ensures we auto-scroll to matches mainly when entering or when a new match appears
+              if (!lastTransactionStatus) {
+                  // Automatically scroll to the FIRST match in the list
+                  setScrollToSection(`match-card-${matches[0].otherPerson.id}`);
+              }
+          } else {
+              // NO MATCHES AND NO PENDING ACTIONS
+              // Show verification message at top
+              if (!lastTransactionStatus) {
+                   setPriorityAlert({
+                      type: 'info',
+                      message: 'Todo al día: No hay coincidencias ni acciones pendientes. Tu solicitud sigue visible.'
+                   });
+              }
+          }
+      }
+
     }
-  }, [currentUserRequest, transactions, allUsers, LS_KEYS.NOTIFICATION_PREFIX]);
-
-
-  const activeTransaction = React.useMemo(() => {
-    if (!currentUserRequest) return null;
-    return transactions.find(t => 
-        (t.initiatorId === currentUserRequest.id || t.receiverId === currentUserRequest.id) && 
-        t.status === 'pending'
-    ) || null;
-  }, [transactions, currentUserRequest]);
+  }, [currentUserRequest, transactions, allUsers, LS_KEYS.NOTIFICATION_PREFIX, matches, activeTransaction, lastTransactionStatus]);
 
 
   // --- SETUP HANDLERS ---
-  const handleToggleSetupAssignment = (id: FortnightId) => {
-      setSetupAssignment(prev => prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]);
+  const handleToggleSetupAssignment = (idOrIds: FortnightId | FortnightId[]) => {
+      const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+      setSetupAssignment(prev => {
+          const newSet = new Set(prev);
+          // Logic: If all passed IDs are already present, remove them.
+          // If any are missing, add the missing ones.
+          const allPresent = ids.every(id => newSet.has(id));
+          
+          if (allPresent) {
+              ids.forEach(id => newSet.delete(id));
+          } else {
+              ids.forEach(id => newSet.add(id));
+          }
+          return Array.from(newSet);
+      });
+  };
+  
+  const handleStartEditAssignment = () => {
+      setSetupAssignment(effectiveUser.initialAssignment || []);
+      setIsEditingAssignment(true);
+      setIsSetupMode(true);
+  };
+  
+  const handleCancelSetup = () => {
+      setIsEditingAssignment(false);
+      setIsSetupMode(false);
+      setSetupError(null);
   };
 
   const handleSaveSetup = () => {
-      if (setupAssignment.length === 0) {
-          setSetupError("Debes seleccionar al menos una quincena asignada.");
+      // STRICT VALIDATION: Exactly 3 fortnights
+      if (setupAssignment.length !== 3) {
+          setSetupError(`Error normativo: Debes seleccionar EXACTAMENTE 3 quincenas asignadas. Has seleccionado ${setupAssignment.length}.`);
           return;
       }
       // Update the user via prop callback
@@ -283,12 +374,16 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
           ...effectiveUser,
           initialAssignment: setupAssignment
       });
-      setIsSetupMode(false);
+      setIsEditingAssignment(false); // Reset edit mode
+      setIsSetupMode(false); // Close Setup
   };
 
 
   const handlePublishOrUpdateSwap = (formData: Pick<SwapRequest, 'has' | 'wants'>) => {
-    if (!formData.has.every(h => currentHoldings.includes(h))) {
+    // Validate ownership.
+    // 'has' may contain full-month IDs. 'currentHoldings' contains atomic parts.
+    const expandedHas = expandFortnightIds(formData.has);
+    if (!expandedHas.every(h => currentHoldings.includes(h))) {
         alert("Error de sincronización: Intentas publicar quincenas que ya no posees.");
         return;
     }
@@ -320,7 +415,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
       const newMatches = findMatches(newRequest, updatedRequests);
       if (newMatches.length > 0) {
         setView('dashboard');
-        setScrollToSection('matches-section');
+        setScrollToSection(`match-card-${newMatches[0].otherPerson.id}`);
       } else {
         setView('explore');
       }
@@ -352,7 +447,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
         const notificationPayload = JSON.stringify({ id: transactionId, status: newStatus });
         localStorage.setItem(notificationKey, notificationPayload);
       }
-      setLoginNotification(null);
+      setPriorityAlert(null);
       setTransactions(prev => prev.map(t => 
           t.id === transactionId ? { ...t, status: newStatus } : t
       ));
@@ -382,14 +477,6 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
           setCurrentUserRequest(null);
       }
   };
-  
-  const matches = React.useMemo(() => {
-    if (!currentUserRequest) return [];
-    const foundMatches = findMatches(currentUserRequest, swapRequests);
-    return foundMatches.sort((a, b) => 
-      new Date(a.otherPerson.id).getTime() - new Date(b.otherPerson.id).getTime()
-    );
-  }, [currentUserRequest, swapRequests]);
 
   React.useEffect(() => {
     if (currentUserRequest) {
@@ -409,17 +496,56 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
       setLastSeenMatchCount(matches.length);
   };
   
-  const renderLoginNotification = () => {
-    if (!loginNotification) return null;
+  const renderPriorityAlert = () => {
+    if (!priorityAlert) return null;
+
+    let bgColor, borderColor, textColor, icon;
+
+    if (priorityAlert.type === 'urgent') {
+        bgColor = 'bg-red-100';
+        borderColor = 'border-red-600';
+        textColor = 'text-red-800';
+        icon = (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600 animate-bounce" fill="none" viewBox="0 0 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        );
+    } else if (priorityAlert.type === 'success') {
+        bgColor = 'bg-green-100';
+        borderColor = 'border-green-600';
+        textColor = 'text-green-800';
+        icon = (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+    } else {
+        // INFO / CLEAN STATE
+        bgColor = 'bg-blue-100';
+        borderColor = 'border-blue-600';
+        textColor = 'text-blue-800';
+        icon = (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+    }
+
     return (
-      <div className="bg-blue-100 border-l-4 border-blue-500 p-4 rounded-lg mb-4 shadow-md flex justify-between items-center" role="alert">
-        <p className="font-bold text-blue-700">{loginNotification}</p>
+      <div className={`${bgColor} border-l-8 ${borderColor} p-6 rounded-lg mb-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-pulse-strong`} role="alert">
+        <div className="flex-shrink-0 bg-white p-2 rounded-full shadow-sm">
+            {icon}
+        </div>
+        <div className="flex-grow">
+             <h3 className={`font-bold text-lg uppercase tracking-wide ${textColor}`}>{priorityAlert.type === 'urgent' ? 'Atención Requerida' : 'Estado'}</h3>
+             <p className={`font-bold text-base ${textColor}`}>{priorityAlert.message}</p>
+        </div>
         <button 
-          onClick={() => setLoginNotification(null)}
+          onClick={() => setPriorityAlert(null)}
           aria-label="Cerrar notificación"
-          className="ml-4 p-1 rounded-full text-blue-700 hover:bg-black/10 transition-colors"
+          className={`self-start sm:self-center p-2 rounded-full ${textColor} hover:bg-black/10 transition-colors`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -471,21 +597,42 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
   };
   
   const InventoryStatusPanel = () => {
-      // Helper for sorting
-      const chronologicalSort = (a: string, b: string) => {
-          const getMonthIndex = (id: string) => {
-              const monthPart = id.split('-')[0];
-              return MONTHS.findIndex(m => m.toLowerCase() === monthPart);
-          };
-          const monthA = getMonthIndex(a);
-          const monthB = getMonthIndex(b);
-          return monthA !== monthB ? monthA - monthB : a.localeCompare(b);
-      };
+      // Helper for sorting and grouping
+      const activeIds = [...currentHoldings].sort((a, b) => {
+            const getMonthIndex = (id: string) => {
+                const monthPart = id.split('-')[0];
+                return MONTHS.findIndex(m => m.toLowerCase() === monthPart);
+            };
+            const monthA = getMonthIndex(a);
+            const monthB = getMonthIndex(b);
+            return monthA !== monthB ? monthA - monthB : a.localeCompare(b);
+      });
 
-      // 1. Current Availability
-      const activeIds = [...currentHoldings].sort(chronologicalSort);
+      // Group logic: Identify Full Months (2 fortnights) vs Single Fortnights
+      const idsByMonth: Record<string, string[]> = {};
+      activeIds.forEach(id => {
+          const month = id.split('-')[0];
+          if (!idsByMonth[month]) idsByMonth[month] = [];
+          idsByMonth[month].push(id);
+      });
 
-      // 2. Changes History (Confirmed transactions)
+      const fullMonthGroups: string[][] = [];
+      const singleFortnights: string[] = [];
+
+      // Iterate through global MONTHS to maintain chronological order in display
+      MONTHS.forEach(m => {
+          const mKey = m.toLowerCase();
+          if (idsByMonth[mKey]) {
+              if (idsByMonth[mKey].length === 2) {
+                  fullMonthGroups.push(idsByMonth[mKey]);
+              } else {
+                  singleFortnights.push(...idsByMonth[mKey]);
+              }
+          }
+      });
+
+
+      // Changes History (Confirmed transactions)
       // Note: In Demo mode, this will naturally show the session history because 'transactions' is scoped to the session
       const changesHistory = transactions
           .filter(t => t.status === 'confirmed' && (t.initiatorId === effectiveUser.employeeId || t.receiverId === effectiveUser.employeeId))
@@ -511,17 +658,50 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                         Disponibilidad {isDemoMode ? '(Simulada)' : 'Actual'} de {effectiveUser.employeeName.split(' ')[0]}
                     </h3>
-                    {isDemoMode && <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">SESIÓN DE PRUEBA</span>}
+                    <div className="flex items-center gap-2">
+                        {isDemoMode && <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 rounded">SESIÓN DE PRUEBA</span>}
+                        <button 
+                            onClick={handleStartEditAssignment}
+                            className="flex items-center text-xs text-gray-500 hover:text-teal-600 hover:underline transition-colors"
+                            title="Si hay un error en lo que se te asignó originalmente, cámbialo aquí."
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                            Corregir Asignación Inicial
+                        </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    {activeIds.length > 0 ? (
-                         activeIds.map(id => (
-                            <div key={id} className="flex items-center px-4 py-2 rounded-lg bg-green-50 border border-green-500 text-green-800 shadow-sm">
-                                <span className="font-bold text-sm">{getFortnightLabel(id)}</span>
+                  <div className="flex flex-col gap-3">
+                    {/* 1. Render Full Months */}
+                    {fullMonthGroups.map((group, idx) => (
+                        <div key={`group-${idx}`} className="flex items-center p-2 rounded-lg bg-green-50 border border-green-300 w-full sm:w-fit">
+                            <span className="text-xs sm:text-sm font-bold text-green-800 capitalize min-w-[60px] sm:min-w-[80px] mr-2 border-r border-green-200 pr-2">
+                                {group[0].split('-')[0]}
+                            </span>
+                            <div className="flex gap-1">
+                                {group.map(id => (
+                                    <div key={id} className="bg-white px-2 py-1 rounded border border-green-200 text-green-700 text-[10px] sm:text-xs font-bold shadow-sm whitespace-nowrap">
+                                        {getAbbreviatedFortnightLabel(id)}
+                                    </div>
+                                ))}
                             </div>
-                         ))
-                    ) : (
+                        </div>
+                    ))}
+
+                    {/* 2. Render Single Fortnights */}
+                    {singleFortnights.length > 0 && (
+                        <div className="flex flex-wrap gap-3 mt-1">
+                            {singleFortnights.map(id => (
+                                <div key={id} className="flex items-center px-4 py-2 rounded-lg bg-green-50 border border-green-500 text-green-800 shadow-sm">
+                                    <span className="font-bold text-sm">{getFortnightLabel(id)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {fullMonthGroups.length === 0 && singleFortnights.length === 0 && (
                         <span className="text-gray-500 italic text-sm">No hay periodos disponibles actualmente.</span>
                     )}
                   </div>
@@ -582,9 +762,9 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
   }
 
   const getTabClasses = (tabName: 'dashboard' | 'explore' | 'success') => {
-    const baseClasses = "relative px-6 py-2 font-bold text-lg rounded-t-lg transition-colors duration-300 focus:outline-none";
+    const baseClasses = "relative flex-1 text-center px-1 sm:px-4 py-1.5 font-bold text-xs sm:text-sm rounded-t-lg transition-colors duration-300 focus:outline-none";
     if (view === tabName) {
-      return `${baseClasses} bg-white text-teal-600 shadow-md`;
+      return `${baseClasses} bg-white text-teal-600 shadow-sm border-t border-x border-gray-200`;
     }
     return `${baseClasses} bg-gray-200 text-gray-600 hover:bg-gray-300`;
   };
@@ -601,29 +781,40 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
       return (
           <div className="max-w-2xl mx-auto">
               <div className="bg-white p-8 rounded-xl shadow-lg border-t-4 border-yellow-500">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-4">Configuración Inicial {isDemoMode && '(Simulada)'}</h2>
+                  <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                      {isEditingAssignment ? 'Corregir Asignación Inicial' : `Configuración Inicial ${isDemoMode ? '(Simulada)' : ''}`}
+                  </h2>
                   <p className="text-gray-600 mb-6 text-lg">
-                      Antes de acceder a las herramientas de intercambio, debes registrar las vacaciones que la empresa te ha asignado oficialmente.
+                      {isEditingAssignment 
+                        ? 'Modifica aquí los periodos que la empresa te asignó originalmente si hubo algún error.'
+                        : 'Antes de acceder a las herramientas de intercambio, debes registrar las vacaciones que la empresa te ha asignado oficialmente.'
+                      }
                   </p>
                   
-                  <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
-                      <div className="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                            <h4 className="font-bold text-blue-800">¿Por qué es esto necesario?</h4>
-                            <p className="text-sm text-blue-700 mt-1">
-                                El sistema utiliza un "Libro Mayor" para garantizar que nadie pueda intercambiar vacaciones que no posee. 
-                                Esta asignación inicial es el punto de partida para validar tus futuros intercambios.
-                            </p>
+                  {!isEditingAssignment && (
+                    <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+                        <div className="flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <h4 className="font-bold text-blue-800">Importante: Asignación por Quincenas</h4>
+                                <p className="text-sm text-blue-700 mt-1">
+                                    Por normativa, la asignación oficial siempre consta de <strong>3 quincenas</strong> (generalmente un mes completo + una quincena suelta).
+                                </p>
+                            </div>
                         </div>
-                      </div>
-                  </div>
+                    </div>
+                  )}
 
-                  <h3 className="font-bold text-gray-800 mb-3 text-lg">Selecciona tu Asignación Original:</h3>
+                  <h3 className="font-bold text-gray-800 mb-3 text-lg">Selecciona tus 3 Quincenas Asignadas:</h3>
                   <div className="border p-4 rounded-lg bg-gray-50 max-h-96 overflow-y-auto mb-6">
-                      <FortnightSelector selected={setupAssignment} onToggle={handleToggleSetupAssignment} />
+                      <FortnightSelector 
+                        selected={setupAssignment} 
+                        onToggle={handleToggleSetupAssignment} 
+                        forceSplitSelection={true} // ENFORCED: Always split months into 2 fortnights
+                        limit={3} // STRICT LIMIT: Exactly 3
+                      />
                   </div>
 
                   {setupError && (
@@ -633,12 +824,22 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
                       </div>
                   )}
 
-                  <button 
-                      onClick={handleSaveSetup}
-                      className="w-full bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-teal-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                  >
-                      Confirmar Asignación y Acceder
-                  </button>
+                  <div className="flex gap-4">
+                      {isEditingAssignment && (
+                          <button 
+                              onClick={handleCancelSetup}
+                              className="w-1/3 bg-gray-300 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition-colors focus:outline-none"
+                          >
+                              Cancelar
+                          </button>
+                      )}
+                      <button 
+                          onClick={handleSaveSetup}
+                          className="flex-grow bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-teal-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                      >
+                          {isEditingAssignment ? 'Guardar Corrección' : 'Confirmar Asignación y Acceder'}
+                      </button>
+                  </div>
               </div>
           </div>
       )
@@ -682,49 +883,48 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
             </div>
         )}
 
-      <header className="text-center mb-10">
-         <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 inline-flex items-center justify-center flex-wrap gap-x-3">
-            <span>CAMBIO VACACIONES</span>
-             <span className="text-2xl font-semibold text-gray-500">({effectiveUser.employeeType})</span>
-        </h1>
-        <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
-          Gestiona tus quincenas asignadas de forma oficial y segura.
-        </p>
-      </header>
-
-      <nav className="flex space-x-2 border-b-2 border-gray-200">
+      {/* Adjusted sticky top to match new header height (116px) */}
+      <nav className="flex space-x-1 border-b-2 border-gray-200 sticky top-[116px] z-30 bg-gray-100 pt-1 shadow-sm mb-6">
         <button onClick={() => setView('dashboard')} className={getTabClasses('dashboard')}>
           Mi Panel
           {newMatchesCount > 0 && (
-            <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-yellow-400 text-yellow-900 flex items-center justify-center text-xs font-bold ring-2 ring-white animate-pulse">
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-yellow-400 text-yellow-900 flex items-center justify-center text-[9px] font-bold ring-2 ring-white animate-pulse">
               {newMatchesCount}
             </span>
           )}
         </button>
         <button onClick={() => setView('explore')} className={getTabClasses('explore')}>
-          Explorar ({effectiveUser.employeeType})
+          Explorar
         </button>
         <button onClick={() => setView('success')} className={getTabClasses('success')}>
-          Casos de Éxito ✨
+          Éxitos
         </button>
       </nav>
+
+      <header className="text-center mb-6">
+         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 text-center">
+            CAMBIO VACACIONES
+        </h1>
+      </header>
       
       {view === 'dashboard' && (
         <main className="bg-white p-6 sm:p-8 rounded-b-xl shadow-xl">
           
           <InventoryStatusPanel />
+          {renderPriorityAlert()}
+          {renderStatusMessage()}
 
           {currentUserRequest ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                 <div className="space-y-6">
-                    <h2 className="text-3xl font-bold text-gray-800 pb-2 border-b-2 border-teal-500">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800 pb-2 border-b-2 border-teal-500">
                         Tu Solicitud Actual
                     </h2>
                     <SwapForm onSubmit={handlePublishOrUpdateSwap} initialData={currentUserRequest} currentHoldings={currentHoldings} />
                 </div>
                 <div className="space-y-12">
                     <section id="matches-section">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-yellow-500 flex items-center gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-yellow-500 flex items-center gap-3 flex-wrap">
                         <span>Coincidencias ({matches.length})</span>
                         {newMatchesCount > 0 && !activeTransaction && (
                             <span className="animate-pulse bg-yellow-400 text-yellow-900 text-sm font-bold px-3 py-1 rounded-full">
@@ -733,33 +933,60 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
                         )}
                         </h2>
                         
-                        {newMatchesCount > 0 && !activeTransaction && (
-                        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-4 flex justify-between items-center shadow-md" role="alert">
-                            <p className="font-bold">¡Tienes {newMatchesCount} nueva(s) coincidencia(s)!</p>
-                            <button onClick={handleAcknowledgeMatches} aria-label="Cerrar notificación" className="text-green-700 hover:text-green-900 font-bold p-1 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                        <div className={`p-4 sm:p-6 rounded-xl shadow-lg border-4 transition-all duration-300 ${
+                           (matches.length > 0 || activeTransaction)
+                             ? 'bg-green-50 border-green-500' 
+                             : 'bg-orange-50 border-orange-300'
+                        }`}>
+                            {(!(matches.length > 0) && !activeTransaction) ? (
+                                <div className="text-center py-4">
+                                    <div className="mx-auto h-16 w-16 text-orange-500 mb-3 bg-orange-100 rounded-full flex items-center justify-center border-2 border-orange-200 animate-bounce">
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                          </svg>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-orange-800 mb-2">Sin Coincidencias Directas</h3>
+                                    <p className="text-orange-700 font-medium">
+                                        Actualmente nadie cumple tus requisitos exactos.
+                                    </p>
+                                    <p className="text-sm text-orange-600 mt-2 bg-white/60 p-2 rounded-lg inline-block">
+                                        Te avisaremos aquí cuando alguien publique lo que buscas.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="flex items-center gap-3 mb-4 border-b border-green-200 pb-3">
+                                          <div className={`p-2 rounded-full shadow-sm ${activeTransaction ? 'bg-red-100 border border-red-300 animate-pulse' : 'bg-green-100 border border-green-300'}`}>
+                                              <span className="text-2xl">{activeTransaction ? '⚠️' : '🎯'}</span>
+                                          </div>
+                                          <div>
+                                              <h3 className={`text-lg font-bold ${activeTransaction ? 'text-red-700' : 'text-green-800'}`}>
+                                                  {activeTransaction ? '¡ACCIÓN REQUERIDA!' : '¡Coincidencias Disponibles!'}
+                                              </h3>
+                                              <p className="text-sm text-green-700">
+                                                  {activeTransaction 
+                                                      ? 'Tienes un intercambio pendiente. Responde para continuar.' 
+                                                      : 'Estas personas tienen lo que buscas y quieren lo que tienes. ¡Propón un cambio!'}
+                                              </p>
+                                          </div>
+                                    </div>
+                                    
+                                    <MatchList 
+                                        matches={matches} 
+                                        currentUserRequestId={currentUserRequest.id}
+                                        activeTransaction={activeTransaction}
+                                        onSelectMatch={handleSelectMatch}
+                                        onAccept={(id) => handleTransactionResponse(id, 'confirmed')}
+                                        onReject={(id) => handleTransactionResponse(id, 'rejected')}
+                                        onExpire={(id) => handleTransactionResponse(id, 'expired')}
+                                    />
+                                </div>
+                            )}
                         </div>
-                        )}
-                        
-                        {renderLoginNotification()}
-                        {renderStatusMessage()}
-
-                        <MatchList 
-                            matches={matches} 
-                            currentUserRequestId={currentUserRequest.id}
-                            activeTransaction={activeTransaction}
-                            onSelectMatch={handleSelectMatch}
-                            onAccept={(id) => handleTransactionResponse(id, 'confirmed')}
-                            onReject={(id) => handleTransactionResponse(id, 'rejected')}
-                            onExpire={(id) => handleTransactionResponse(id, 'expired')}
-                        />
                     </section>
                     
                     <section id="history-section">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-400">
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-400">
                             Historial de Transacciones
                         </h2>
                         <TransactionHistory 
@@ -773,17 +1000,16 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
           ) : (
             <div className="space-y-12">
                 <section id="form-section">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-teal-500">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-teal-500">
                         Crear Nueva Solicitud
                     </h2>
                     <p className="text-gray-600 mb-4">
                         Actualmente no tienes ninguna solicitud activa. Utiliza el formulario para indicar qué quieres cambiar.
                     </p>
-                    {renderStatusMessage()}
                     <SwapForm onSubmit={handlePublishOrUpdateSwap} initialData={newRequestBase as SwapRequest} currentHoldings={currentHoldings} />
                 </section>
                 <section id="history-section">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-400">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-400">
                         Historial de Transacciones
                     </h2>
                     <TransactionHistory 
@@ -800,7 +1026,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
       {view === 'explore' && (
         <main className="space-y-12 bg-white p-6 sm:p-8 rounded-b-xl shadow-xl">
             <section id="quick-match-section">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-purple-500">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-purple-500">
                 Búsqueda Rápida
                 </h2>
                 <QuickMatchFinder 
@@ -811,7 +1037,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
             </section>
 
             <section id="all-requests-section">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-300">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-gray-300">
                 Intercambios Publicados ({effectiveUser.employeeType})
               </h2>
               <SwapList 
@@ -825,7 +1051,7 @@ const VacationSwapApp: React.FC<VacationSwapAppProps> = ({ registeredUser, realU
 
       {view === 'success' && (
          <section id="success-stories-section" className="bg-white p-6 sm:p-8 rounded-b-xl rounded-tr-xl shadow-xl">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-green-500">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 pb-2 border-b-2 border-green-500">
                   Historial de Intercambios Exitosos
               </h2>
               <SuccessStories 
