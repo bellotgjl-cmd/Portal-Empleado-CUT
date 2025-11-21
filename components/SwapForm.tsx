@@ -2,7 +2,7 @@
 import * as React from 'react';
 import FortnightSelector from './FortnightSelector';
 import type { FortnightId, SwapRequest } from '../types';
-import { getFortnightLabel } from '../constants';
+import { getFortnightLabel, FORTNIGHTS, getFullMonthId } from '../constants';
 
 interface SwapFormProps {
   onSubmit: (request: Pick<SwapRequest, 'has' | 'wants'>) => void;
@@ -35,7 +35,20 @@ const SwapForm: React.FC<SwapFormProps> = ({ onSubmit, initialData, currentHoldi
       // Ensure we only pre-fill 'has' if the user still owns them
       const validHas = initialData.has.filter(h => currentHoldings.includes(h));
       setHas(validHas);
-      setWants(initialData.wants);
+      
+      // Filter wants to ensure no overlap with what is owned (currentHoldings)
+      const filteredWants = initialData.wants.filter(w => {
+          if (currentHoldings.includes(w)) return false;
+          
+          // Check for full month conflicts if we have parts of that month
+          if (w.endsWith('-full')) {
+             const month = w.split('-')[0];
+             const hasPart = currentHoldings.some(h => h.startsWith(month + '-'));
+             if (hasPart) return false;
+          }
+          return true;
+      });
+      setWants(filteredWants);
     } else {
       setEmployeeName('');
       setEmail('');
@@ -48,10 +61,20 @@ const SwapForm: React.FC<SwapFormProps> = ({ onSubmit, initialData, currentHoldi
   const toggleHas = (id: FortnightId) => {
     // Strict check: Can only toggle if it's in currentHoldings
     if (!currentHoldings.includes(id)) return;
-    setHas(prev => prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]);
+    
+    setHas(prev => {
+        const isAdding = !prev.includes(id);
+        if (isAdding) {
+            return [...prev, id];
+        } else {
+            return prev.filter(fid => fid !== id);
+        }
+    });
   };
 
   const toggleWants = (id: FortnightId) => {
+     // Prevent selecting if it's already in 'currentHoldings'
+     if (currentHoldings.includes(id)) return;
      setWants(prev => prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]);
   };
 
@@ -128,7 +151,7 @@ const SwapForm: React.FC<SwapFormProps> = ({ onSubmit, initialData, currentHoldi
         </Card>
         
         <Card title="¿Qué buscas? (Sin límite)">
-          <FortnightSelector selected={wants} onToggle={toggleWants} />
+          <FortnightSelector selected={wants} onToggle={toggleWants} disabledIds={currentHoldings} />
         </Card>
       </div>
 

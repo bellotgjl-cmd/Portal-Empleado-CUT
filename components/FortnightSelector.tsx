@@ -56,7 +56,14 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
         const monthFortnights = FORTNIGHTS.filter(f => f.month === month);
         
         const selectedFortnightsInMonthCount = monthFortnights.filter(f => selected.includes(f.id)).length;
-        const isMonthToggleDisabled = !isFullMonthSelected && limit !== undefined && (selected.length - selectedFortnightsInMonthCount + 1 > limit) || monthFortnights.every(f => disabledIds.includes(f.id));
+        
+        // Disable month toggle if:
+        // 1. Limit is reached (and not already selected)
+        // 2. OR the full month itself is in disabledIds
+        // 3. OR ANY of the individual fortnights are disabled (e.g. because user has them)
+        const isMonthToggleDisabled = (!isFullMonthSelected && limit !== undefined && (selected.length - selectedFortnightsInMonthCount + 1 > limit)) 
+                                      || disabledIds.includes(fullMonthId)
+                                      || monthFortnights.some(f => disabledIds.includes(f.id));
         
         // Create a unique identifier for the checkbox to avoid duplicate IDs in the DOM
         const uniqueId = `month-toggle-${month.toLowerCase()}-${limit !== undefined ? limit : 'none'}`;
@@ -87,8 +94,16 @@ const FortnightSelector: React.FC<FortnightSelectorProps> = ({ selected, onToggl
             <div className="grid grid-cols-2 gap-2">
               {monthFortnights.map(fortnight => {
                 const isSelected = selected.includes(fortnight.id);
-                // Disable individual fortnights if the full month is selected, the selection limit is reached, or it's in the disabledIds list.
-                const isDisabled = isFullMonthSelected || (!isSelected && limit !== undefined && selected.length >= limit) || disabledIds.includes(fortnight.id);
+                // Disable individual fortnights if:
+                // 1. Full month is selected
+                // 2. Limit reached
+                // 3. ID is in disabledIds
+                // 4. Parent full month is in disabledIds
+                const isDisabled = isFullMonthSelected 
+                                   || (!isSelected && limit !== undefined && selected.length >= limit) 
+                                   || disabledIds.includes(fortnight.id)
+                                   || disabledIds.includes(fullMonthId);
+                
                 const buttonClass = isSelected
                   ? 'bg-teal-600 text-white shadow-md'
                   : isDisabled
